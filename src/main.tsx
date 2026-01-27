@@ -11,5 +11,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <BrowserRouter>
       <App />
     </BrowserRouter>
-  </React.StrictMode>
+  </React.StrictMode>,
 );
+
+// Hide the loading screen after the app has started rendering
+const loadingElement = document.getElementById("loading");
+if (loadingElement) {
+  loadingElement.style.display = "none";
+}
