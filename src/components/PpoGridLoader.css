@@ -1,0 +1,57 @@
+/* Wrapper */
+.loader-wrapper {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.loader-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+  letter-spacing: 0.5px;
+}
+
+/* === GRID LOADER === */
+@keyframes square-animation {
+  0%, 10.5% { left: 0; top: 0; }
+  12.5%, 23% { left: 44px; top: 0; }
+  25%, 35.5% { left: 88px; top: 0; }
+  37.5%, 48% { left: 88px; top: 44px; }
+  50%, 60.5% { left: 44px; top: 44px; }
+  62.5%, 73% { left: 44px; top: 88px; }
+  75%, 85.5% { left: 0; top: 88px; }
+  87.5%, 98% { left: 0; top: 44px; }
+  100% { left: 0; top: 0; }
+}
+
+
+.loader {
+  position: relative;
+  width: 128px;
+  height: 128px;
+  transform: rotate(45deg);
+}
+
+.loader-square {
+  position: absolute;
+  width: 38px;
+  height: 38px;
+  margin: 3px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  animation: square-animation 10s ease-in-out infinite both;
+}
+
+/* animation offsets (7 squares) */
+.loader-square:nth-child(1) { animation-delay: 0s; }
+.loader-square:nth-child(2) { animation-delay: -1.43s; }
+.loader-square:nth-child(3) { animation-delay: -2.86s; }
+.loader-square:nth-child(4) { animation-delay: -4.29s; }
+.loader-square:nth-child(5) { animation-delay: -5.71s; }
+.loader-square:nth-child(6) { animation-delay: -7.14s; }
+.loader-square:nth-child(7) { animation-delay: -8.57s; }
