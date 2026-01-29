@@ -127,7 +127,6 @@ export default function StationInventory() {
   const [editing, setEditing] = useState<Item | null>(null);
   const [loading, setLoading] = useState(false);
   const [newItem, setNewItem] = useState<any>({});
-  const [importedRows, setImportedRows] = useState<any[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
 
@@ -140,6 +139,10 @@ export default function StationInventory() {
 
   const [quicklookOpen, setQuicklookOpen] = useState(false);
   const [quicklookVisible, setQuicklookVisible] = useState(false);
+  const [tableCleared, setTableCleared] = useState(false);
+  const PAGE_SIZE = 10;
+  const [page, setPage] = useState(1);
+
   const sleep = (ms: number) =>
     new Promise((resolve) => setTimeout(resolve, ms));
   const openQuicklook = () => {
@@ -152,6 +155,7 @@ export default function StationInventory() {
   };
   const [quicklookSeed, setQuicklookSeed] = useState<any | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [csvLimit, setCsvLimit] = useState<number | null>(null);
 
   const normalizeCode = (v?: string) => (v ?? "").trim().toUpperCase();
 
@@ -215,6 +219,10 @@ export default function StationInventory() {
   };
 
   useEffect(() => {
+    setPage(1);
+  }, [query, typeFilter, csvLimit, tableCleared]);
+
+  useEffect(() => {
     if (modalImages.length === 0) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -275,13 +283,12 @@ export default function StationInventory() {
     [items, station],
   );
 
-  const types = useMemo(
-    () => [
+  const types = useMemo(() => {
+    return [
       "All",
       ...Array.from(new Set(stationItems.map((i) => i.type || ""))),
-    ],
-    [stationItems],
-  );
+    ];
+  }, [stationItems]);
 
   const getField = (item: any, by: string) => {
     if (by.startsWith("status.")) return item?.status?.[by.split(".")[1]] ?? 0;
@@ -290,10 +297,23 @@ export default function StationInventory() {
       return item?.whereabouts?.[by.split(".")[1]] ?? "";
     return item?.[by] ?? "";
   };
+  const baseRows = stationItems;
 
   const filtered = useMemo(() => {
-    let rows = stationItems;
-    if (typeFilter !== "All") rows = rows.filter((i) => i.type === typeFilter);
+    let rows = baseRows;
+
+    // 🧹 Clear table
+    if (tableCleared) return [];
+
+    // 📄 CSV view (most recent N)
+    if (csvLimit !== null) {
+      rows = rows.slice(0, csvLimit);
+    }
+
+    if (typeFilter !== "All") {
+      rows = rows.filter((i) => i.type === typeFilter);
+    }
+
     if (query.trim()) {
       const q = query.trim().toLowerCase();
       rows = rows.filter(
@@ -306,15 +326,10 @@ export default function StationInventory() {
           (i.whereabouts?.userName || "").toLowerCase().includes(q),
       );
     }
-    const mul = sort.dir === "asc" ? 1 : -1;
-    return [...rows].sort((a, b) => {
-      const av = getField(a, sort.by);
-      const bv = getField(b, sort.by);
-      if (typeof av === "number" && typeof bv === "number")
-        return (av - bv) * mul;
-      return String(av).localeCompare(String(bv)) * mul;
-    });
-  }, [stationItems, query, typeFilter, sort]);
+
+    return rows;
+  }, [baseRows, query, typeFilter, csvLimit, tableCleared]);
+
   const REQUIRED_TEXT_FIELDS = [
     "equipment",
     "type",
@@ -497,6 +512,13 @@ export default function StationInventory() {
     }
   };
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, page]);
+
   // EDIT SAVE (update Supabase)
   const handleEditSave = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -649,6 +671,29 @@ export default function StationInventory() {
         : { by, dir: "asc" },
     );
 
+  const mapCSVRowToPayload = (row: any) => ({
+    sector,
+    station,
+    equipment: String(row.equipment || "").trim(),
+    type: String(row.type || "").trim(),
+    make: String(row.make || "").trim(),
+    serial_no: String(row.serialNo || "").trim(),
+    property_no: String(row.propertyNo || "").trim(),
+    acquisition_date: normalizeCSVDate(row.acquisitionDate) || null,
+    acquisition_cost: toNum(row.acquisitionCost),
+    cost_of_repair: toNum(row.costOfRepair),
+    current_or_depreciated: String(row.currentOrDepreciated || ""),
+    status_svc: toNum(row.svc),
+    status_uns: toNum(row.uns),
+    status_ber: toNum(row.ber),
+    source_procured: toNum(row.procured),
+    source_donated: toNum(row.donated),
+    source_found_at_station: toNum(row.foundAtStation),
+    source_loaned: toNum(row.loaned),
+    user_office: String(row.userOffice || ""),
+    user_name: String(row.userName || ""),
+  });
+
   const getCSVValue = (i: any, h: string) => {
     const map: Record<string, any> = {
       station: i.station,
@@ -721,7 +766,6 @@ export default function StationInventory() {
     // 🔀 ROUTING DECISION
     if (isQuicklookCSV(cols)) {
       // 👉 QUICKLOOK CSV
-      setImportedRows(rows); // keep all rows if you want bulk later
       openQuicklook();
 
       // pass first row to Quicklook form
@@ -741,30 +785,55 @@ export default function StationInventory() {
 
       return; // ⛔ stop here
     }
-    // 1️⃣ autofill Add Form with first row
-    setNewItem({
-      equipment: rows[0].equipment || "",
-      type: rows[0].type || "",
-      make: rows[0].make || "",
-      serialNo: rows[0].serialNo || "",
-      propertyNo: rows[0].propertyNo || "",
-      acquisitionDate: normalizeCSVDate(rows[0].acquisitionDate),
-      acquisitionCost: toNum(rows[0].acquisitionCost),
-      costOfRepair: toNum(rows[0].costOfRepair),
-      currentOrDepreciated: rows[0].currentOrDepreciated || "",
-      svc: toNum(rows[0].svc),
-      uns: toNum(rows[0].uns),
-      ber: toNum(rows[0].ber),
-      procured: toNum(rows[0].procured),
-      donated: toNum(rows[0].donated),
-      foundAtStation: toNum(rows[0].foundAtStation),
-      loaned: toNum(rows[0].loaned),
-      userOffice: rows[0].userOffice || "",
-      userName: rows[0].userName || "",
-    });
 
     // 2️⃣ store all imported rows in a temporary state for later addition
-    setImportedRows(rows); // 👈 you’ll need: const [importedRows, setImportedRows] = useState<any[]>([]);
+    // 👉 STATION INVENTORY CSV
+    // 👉 STATION INVENTORY CSV → INSERT TO DB
+    const payloads = rows.map(mapCSVRowToPayload);
+
+    const { data: inserted, error } = await supabase
+      .from("station_inventory")
+      .insert(payloads)
+      .select("*");
+
+    if (error) {
+      Swal.fire("Import failed", error.message, "error");
+      return;
+    }
+
+    if (!inserted || inserted.length === 0) {
+      Swal.fire("Import failed", "No rows were inserted.", "error");
+      return;
+    }
+
+    // optional: activity log
+    await supabase.from("inventory_activity_log").insert(
+      inserted.map((row) => ({
+        sector,
+        station,
+        inventory_id: row.id,
+        action: "CSV_IMPORT",
+        performed_department: session?.department ?? "Unknown",
+        performed_by: session?.name ?? null,
+        snapshot: row,
+      })),
+    );
+
+    // 🔥 UPDATE TABLE IMMEDIATELY
+    setItems((prev) => [...inserted.map(mapRowToItem), ...prev]);
+
+    // 🔥 SHOW ONLY THE IMPORTED CSV ROWS
+    setCsvLimit(inserted.length);
+    setTableCleared(false);
+    setQuery("");
+    setTypeFilter("All");
+    setPage(1);
+
+    Swal.fire(
+      "Import successful",
+      `${inserted.length} items imported from CSV.`,
+      "success",
+    );
   };
 
   const totals = useMemo(() => {
@@ -802,6 +871,49 @@ export default function StationInventory() {
             <button onClick={exportCSV} className="soft-btn px-3 py-2">
               Export CSV
             </button>
+
+            {tableCleared ? (
+              <button
+                onClick={() => {
+                  setCsvLimit(null);
+                  setTableCleared(false);
+                }}
+                className="soft-btn px-3 py-2"
+              >
+                Render All Data
+              </button>
+            ) : csvLimit !== null ? (
+              <button
+                onClick={() => setCsvLimit(null)}
+                className="soft-btn px-3 py-2"
+              >
+                Render All Data
+              </button>
+            ) : (
+              <button
+                onClick={async () => {
+                  const res = await Swal.fire({
+                    title: "Clear table view?",
+                    text: "This will NOT delete data from the database.",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Clear view",
+                    cancelButtonText: "Cancel",
+                  });
+
+                  if (res.isConfirmed) {
+                    setTableCleared(true);
+                    setCsvLimit(null); // ⬅️ IMPORTANT
+                    setQuery("");
+                    setTypeFilter("All");
+                  }
+                }}
+                className="soft-btn px-3 py-2"
+              >
+                Clear Table
+              </button>
+            )}
+
             <label className="soft-btn px-3 py-2 cursor-pointer">
               Import CSV
               <input
@@ -1394,7 +1506,7 @@ export default function StationInventory() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((item) => {
+                {paginatedRows.map((item) => {
                   const statusTotal =
                     toNum(item?.status?.svc) +
                     toNum(item?.status?.uns) +
@@ -1504,6 +1616,31 @@ export default function StationInventory() {
                       </div>
                     </td>
                   </tr>
+                )}
+                {!tableCleared && filtered.length > PAGE_SIZE && (
+                  <div className="mt-6 flex justify-center text-sm">
+                    <div className="flex items-center gap-3 text-slate-700">
+                      <button
+                        disabled={page === 1}
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        className="disabled:text-slate-300"
+                      >
+                        &lt;
+                      </button>
+
+                      <span className="font-medium">{page}</span>
+
+                      <button
+                        disabled={page === totalPages}
+                        onClick={() =>
+                          setPage((p) => Math.min(totalPages, p + 1))
+                        }
+                        className="disabled:text-slate-300"
+                      >
+                        &gt;
+                      </button>
+                    </div>
+                  </div>
                 )}
               </tbody>
             </table>
