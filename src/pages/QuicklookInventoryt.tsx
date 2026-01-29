@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { createClient } from "@supabase/supabase-js";
 import Swal from "sweetalert2";
 import PpoGridLoader from "../components/PpoGridLoader";
-import * as XLSX from "xlsx";
 
 const TYPE_CONFIG = {
   "Long FAS": {
