@@ -59,9 +59,16 @@ const DISPOSITION_OPTIONS = ["ASSIGNED", "FOR REPAIR", "FOR DISPOSAL", "STOCK"];
 const ISSUANCE_OPTIONS = ["ISSUED", "NOT ISSUED"];
 
 // Supabase client is initialized once and reused across fetch/update/delete
-const supabaseUrl = "https://blxrymicjowtplrkusck.supabase.co";
-const supabaseKey =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJseHJ5bWljam93dHBscmt1c2NrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc1NTkwODQsImV4cCI6MjA4MzEzNTA4NH0.Q1y53hRP0PS91IbRdX4jUIqJBqtJAmqVbOg6PgPhAi4";
+// Using environment variables instead of hardcoded credentials
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error(
+    "Missing Supabase environment variables. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY"
+  );
+}
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 const CALABARZON_ORDER = ["CAVITE", "LAGUNA", "BATANGAS", "RIZAL", "QUEZON"];
 

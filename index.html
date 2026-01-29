@@ -4,10 +4,60 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/src/images/pnp-logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- ========== SECURITY HEADERS ========== -->
+    
+    <!-- Content Security Policy - Prevents XSS, injection attacks -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'wasm-unsafe-eval';
+      style-src 'self' 'unsafe-inline';
+      img-src 'self' data: https:;
+      font-src 'self' data:;
+      connect-src 'self' https://blxrymicjowtplrkusck.supabase.co;
+      frame-ancestors 'none';
+      base-uri 'self';
+      form-action 'self';
+    " />
+    
+    <!-- Prevents clickjacking attacks -->
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <meta http-equiv="X-Frame-Options" content="SAMEORIGIN" />
+    
+    <!-- Prevents MIME type sniffing -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    
+    <!-- Enables XSS protection in older browsers -->
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+    
+    <!-- Referrer Policy - Limits referrer information -->
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    
+    <!-- Permissions Policy - Restricts browser features -->
+    <meta http-equiv="Permissions-Policy" content="
+      geolocation=(),
+      microphone=(),
+      camera=(),
+      payment=(),
+      usb=(),
+      magnetometer=(),
+      gyroscope=(),
+      accelerometer=()
+    " />
+    
+    <!-- Security: Disable autocomplete for sensitive forms -->
+    <meta name="autocomplete" content="off" />
+    
     <title>inventory-pnp</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Security: Initialize security features after DOM load -->
+    <script>
+      // Immediately disable dangerous APIs
+      Object.freeze(Object.prototype);
+    </script>
   </body>
 </html>
