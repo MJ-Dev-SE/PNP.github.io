@@ -12,10 +12,15 @@ import rmfb from "../images/RMFB4A.png";
 export const SECTOR_BADGES: Record<string, string> = {
   RHQ: rhq,
   CAVITE: cavite,
+  "CAVITE PPO": cavite,
   LAGUNA: laguna,
+  "LAGUNA PPO": laguna,
   BATANGAS: batangas,
+  "BATANGAS PPO": batangas,
   RIZAL: rizal,
+  "RIZAL PPO": rizal,
   QUEZON: quezon,
+  "QUEZON PPO": quezon,
   RMFB: rmfb,
 };
 
