@@ -88,7 +88,7 @@ export default function Dashboard() {
               </button>
 
               <button
-                onClick={() => nav("/inventory")}
+                onClick={() => nav("/")}
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-200"
               >
                 <svg
@@ -259,4 +259,3 @@ export default function Dashboard() {
     </div>
   );
 }
-

@@ -33,16 +33,17 @@ try {
   console.error("Security initialization failed:", error);
 }
 
-// Prevent right-click context menu in production
-if (import.meta.env.PROD) {
+// Optional UI friction only (not real security): disable right-click and some devtools shortcuts.
+// Set VITE_BLOCK_BROWSER_TOOLS=true to enable in any environment.
+const shouldBlockBrowserTools =
+  import.meta.env.VITE_BLOCK_BROWSER_TOOLS === "true";
+
+if (shouldBlockBrowserTools) {
   document.addEventListener("contextmenu", (e) => {
     e.preventDefault();
     return false;
   });
-}
 
-// Disable common keyboard shortcuts for developer tools
-if (import.meta.env.PROD) {
   document.addEventListener("keydown", (e) => {
     // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
     if (
