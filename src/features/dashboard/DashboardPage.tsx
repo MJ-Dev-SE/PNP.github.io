@@ -1,3 +1,4 @@
+//filtering and navigation - dashboard
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MiniStat } from "../../components/UI";
@@ -84,7 +85,7 @@ export default function Dashboard() {
                 >
                   <path d="M4 5h16M7 12h10M10 19h4" strokeLinecap="round" />
                 </svg>
-                Quicklookt
+                Generate Data
               </button>
 
               <button

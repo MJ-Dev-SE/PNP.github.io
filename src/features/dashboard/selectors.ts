@@ -1,3 +1,4 @@
+//sku and unit data calculation, categorization, and filtering for dashboard
 import { SECTORS, itemsKey, toNum } from "../../utils/storage";
 import {
   CATEGORY_VALUES,
@@ -67,7 +68,7 @@ export const filterVisibleCards = (
   }
 
   if (sort === "DEFAULT") {
-    list.sort((a, b) => SECTORS.indexOf(a.name) - SECTORS.indexOf(b.name));
+    list.sort((a, b) => SECTORS.indexOf(a.name as typeof SECTORS[number]) - SECTORS.indexOf(b.name as typeof SECTORS[number]));
   } else if (sort === "UNITS_DESC") {
     list.sort((a, b) => b.units - a.units);
   } else if (sort === "SKUS_DESC") {

@@ -1,3 +1,4 @@
+//declaration text, knowing the data type within the array, declaration of data types
 export const STATION_SORT_VALUES = [
   "NAME_ASC",
   "UNITS_DESC",

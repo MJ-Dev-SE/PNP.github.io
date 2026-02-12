@@ -1,3 +1,4 @@
+//csv functionalities, rules and adjustments
 export const normalizeCSVDate = (value: string) => {
   if (!value) return "";
 

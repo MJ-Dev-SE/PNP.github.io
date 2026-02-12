@@ -1,3 +1,4 @@
+//excel headers, to recognize pic and call within the declaration of PPO_LOGOS
 export const CSV_HEADERS = [
   "station",
   "type",

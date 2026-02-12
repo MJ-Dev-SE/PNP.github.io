@@ -1,3 +1,4 @@
+//declaration of components and types used in the dashboard feature
 export type InventoryCacheRow = {
   sector?: string;
   status_uns?: unknown;

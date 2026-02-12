@@ -1,3 +1,4 @@
+//api key for hashing the pin
 export const hashPin = async (pin: string) => {
   const enc = new TextEncoder().encode(pin);
   const buf = await crypto.subtle.digest("SHA-256", enc);

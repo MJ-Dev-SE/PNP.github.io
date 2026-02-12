@@ -1,3 +1,4 @@
+//overall ui within sector dashboard
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { itemsKey, loadStations, saveStations } from "../../utils/storage";
@@ -42,9 +43,7 @@ export default function SectorDashboard() {
    * UI state for filtering, sorting, and modal control.
    */
   const [q, setQ] = useState("");
-  const [sort, setSort] = useState<StationSort>(
-    "NAME_ASC",
-  );
+  const [sort, setSort] = useState<StationSort>("NAME_ASC");
   const [showNew, setShowNew] = useState(false);
   const [newName, setNewName] = useState("");
 
@@ -363,7 +362,11 @@ export default function SectorDashboard() {
       <main className="max-w-[95rem] mx-auto px-4 xl:px-8 py-8">
         <div className="rounded-2xl border border-slate-200/70 bg-white/70 p-5 shadow-sm backdrop-blur mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1">
-            <SearchInput value={q} onChange={setQ} placeholder="Search stations..." />
+            <SearchInput
+              value={q}
+              onChange={setQ}
+              placeholder="Search stations..."
+            />
             <SelectControl
               value={sort}
               onChange={(v: string) => setSort(v as any)}
@@ -587,8 +590,3 @@ export default function SectorDashboard() {
     </div>
   );
 }
-
-
-
-
-

@@ -1,3 +1,4 @@
+// declaration of data types, setting data to chose
 export type Item = {
   id: string;
   sector: string;

@@ -1,3 +1,4 @@
+//declaration to involve the image and pin in the login pops
 export const PPO_LOGOS = [
   "/ppo/rhq.png",
   "/ppo/rmfb4a.png",

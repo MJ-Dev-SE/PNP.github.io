@@ -1,3 +1,4 @@
+//more like calling db
 import { toNum } from "../../utils/storage";
 import type { Item } from "./types";
 
