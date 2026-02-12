@@ -1,8 +1,9 @@
 //filtering and navigation - dashboard
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MiniStat } from "../../components/UI";
-import { SECTORS, SECTOR_BADGES } from "../../utils/storage";
+import { supabase } from "../../lib/supabase";
+import { SECTOR_BADGES } from "../../utils/storage";
 import {
   SearchInput,
   SelectControl,
@@ -17,6 +18,43 @@ import {
 } from "./selectors";
 import type { Category, SortOption } from "./types";
 
+type ActivityLogRow = {
+  id: string | number;
+  action?: string | null;
+  sector?: string | null;
+  station?: string | null;
+  performed_department?: string | null;
+  performed_by?: string | null;
+  created_at?: string | null;
+  snapshot?: unknown;
+};
+
+type ActivityEntry = {
+  id: string;
+  action: string;
+  sector: string;
+  station: string;
+  actor: string;
+  label: string;
+  timestamp: string;
+};
+
+const toRecord = (value: unknown): Record<string, unknown> | null =>
+  value !== null && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : null;
+
+const buildSnapshotLabel = (snapshot: unknown): string => {
+  const row = toRecord(snapshot);
+  if (!row) return "Inventory record";
+
+  const parts = [row.type, row.make, row.caliber, row.serial_no]
+    .map((part) => String(part ?? "").trim())
+    .filter(Boolean);
+
+  return parts.length > 0 ? parts.join(" / ") : "Inventory record";
+};
+
 export default function Dashboard() {
   const nav = useNavigate();
 
@@ -25,6 +63,67 @@ export default function Dashboard() {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<Category>("All");
   const [sort, setSort] = useState<SortOption>("DEFAULT");
+  const [now, setNow] = useState(() => new Date());
+  const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
+  const [activityLoading, setActivityLoading] = useState(true);
+  const [activityError, setActivityError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 1000);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchRecentActivity = async (isInitial = false) => {
+      if (isInitial) setActivityLoading(true);
+
+      const { data, error } = await supabase
+        .from("inventory_activity_log")
+        .select(
+          "id, action, sector, station, performed_department, performed_by, created_at, snapshot",
+        )
+        .order("created_at", { ascending: false })
+        .limit(6);
+
+      if (!mounted) return;
+
+      if (error) {
+        setActivityError("Unable to load live inventory activity.");
+        setActivityLoading(false);
+        return;
+      }
+
+      const rows = (data ?? []) as ActivityLogRow[];
+      const mapped: ActivityEntry[] = rows.map((row) => ({
+        id: String(row.id),
+        action: String(row.action ?? "EVENT"),
+        sector: String(row.sector ?? "Unknown sector"),
+        station: String(row.station ?? "Unknown station"),
+        actor: String(
+          row.performed_by ?? row.performed_department ?? "Unknown user",
+        ),
+        label: buildSnapshotLabel(row.snapshot),
+        timestamp: row.created_at ?? new Date().toISOString(),
+      }));
+
+      setActivityEntries(mapped);
+      setActivityError(null);
+      setActivityLoading(false);
+    };
+
+    void fetchRecentActivity(true);
+    const poll = window.setInterval(() => {
+      void fetchRecentActivity();
+    }, 30000);
+
+    return () => {
+      mounted = false;
+      window.clearInterval(poll);
+    };
+  }, []);
 
   const categorized = useMemo(() => categorizeCards(cards), [cards]);
 
@@ -47,6 +146,57 @@ export default function Dashboard() {
                 <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[12px] font-semibold text-blue-800">
                   Dashboard
                 </span>
+                <div className="group relative">
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 text-[12px] font-semibold text-slate-700">
+                    {now.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    })}
+                  </span>
+                  <div className="pointer-events-none absolute right-0 top-full z-20 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-700 opacity-0 shadow-xl transition duration-150 group-hover:pointer-events-auto group-hover:opacity-100">
+                    <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                      Live Inventory Activity
+                    </div>
+                    {activityLoading ? (
+                      <div className="text-slate-500">Loading recent activity...</div>
+                    ) : activityError ? (
+                      <div className="text-red-600">{activityError}</div>
+                    ) : activityEntries.length > 0 ? (
+                      <div className="space-y-2">
+                        {activityEntries.map((entry) => (
+                          <div
+                            key={entry.id}
+                            className="rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-2"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-semibold text-slate-800">
+                                {entry.label}
+                              </span>
+                              <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                                {entry.action}
+                              </span>
+                            </div>
+                            <div className="mt-0.5 text-slate-600">
+                              {entry.sector} / {entry.station}
+                            </div>
+                            <div className="mt-0.5 text-[11px] text-slate-500">
+                              by {entry.actor}
+                            </div>
+                            <div className="mt-0.5 text-[11px] text-slate-500">
+                              {new Date(entry.timestamp).toLocaleString()}{" "}
+                              (live)
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-slate-500">
+                        No live inventory activity yet.
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
               <h1 className="mt-2 truncate text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
                 Inventory Overview
