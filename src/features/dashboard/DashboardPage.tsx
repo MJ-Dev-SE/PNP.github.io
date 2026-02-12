@@ -1,5 +1,5 @@
 //filtering and navigation - dashboard
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MiniStat } from "../../components/UI";
 import { supabase } from "../../lib/supabase";
@@ -67,6 +67,8 @@ export default function Dashboard() {
   const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState<string | null>(null);
+  const [touchOpen, setTouchOpen] = useState(false);
+  const touchHoldTimer = useRef<number | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
@@ -132,6 +134,26 @@ export default function Dashboard() {
     [categorized, q, cat, sort],
   );
 
+  const clearTouchHold = () => {
+    if (touchHoldTimer.current !== null) {
+      window.clearTimeout(touchHoldTimer.current);
+      touchHoldTimer.current = null;
+    }
+  };
+
+  const handleTouchStart = () => {
+    clearTouchHold();
+    touchHoldTimer.current = window.setTimeout(() => {
+      setTouchOpen(true);
+      touchHoldTimer.current = null;
+    }, 350);
+  };
+
+  const handleTouchEnd = () => {
+    clearTouchHold();
+    setTouchOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-slate-100 to-blue-50 text-slate-900">
       <header className="sticky top-0 z-10 border-b border-slate-200/70 bg-white/70 backdrop-blur">
@@ -146,7 +168,13 @@ export default function Dashboard() {
                 <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[12px] font-semibold text-blue-800">
                   Dashboard
                 </span>
-                <div className="group relative">
+                <div
+                  className="group relative"
+                  onTouchStart={handleTouchStart}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchCancel={handleTouchEnd}
+                  onTouchMove={handleTouchEnd}
+                >
                   <span className="inline-flex items-center rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 text-[12px] font-semibold text-slate-700">
                     {now.toLocaleTimeString([], {
                       hour: "2-digit",
@@ -154,7 +182,13 @@ export default function Dashboard() {
                       second: "2-digit",
                     })}
                   </span>
-                  <div className="pointer-events-none absolute right-0 top-full z-20 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-700 opacity-0 shadow-xl transition duration-150 group-hover:pointer-events-auto group-hover:opacity-100">
+                  <div
+                    className={`absolute right-0 top-full z-20 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-700 shadow-xl transition duration-150 ${
+                      touchOpen
+                        ? "pointer-events-auto opacity-100"
+                        : "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100"
+                    }`}
+                  >
                     <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
                       Live Inventory Activity
                     </div>
