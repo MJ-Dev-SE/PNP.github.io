@@ -1,0 +1,23 @@
+export type Item = {
+  id: string;
+  sector: string;
+  station: string;
+  caliber: string;
+  type: string;
+  make: string;
+  serial_no: string;
+  semi_expendable_property_nr: string;
+  acquisition_date: string | number;
+  acquisition_cost: number;
+  cost_of_repair: number;
+  current_or_depreciated: string;
+  status: "svc" | "uns" | "ber";
+  source: "organic" | "donated" | "loaned";
+  disposition: "onhand" | "issued";
+  issuance: "assigned" | "temporary" | "permanent";
+  on_hand_qty: number;
+  on_hand_value: number;
+  whereabouts: { user_office: string; user_name: string };
+  imageUrls?: string[];
+  createdAt: string;
+};

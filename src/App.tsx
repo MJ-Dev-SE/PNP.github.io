@@ -4,6 +4,7 @@ import SectorDashboard from "./pages/SectorDashboard";
 import StationInventory from "./pages/StationInventory";
 import QuicklookInventory from "./pages/QuicklookInventory";
 import QuicklookInventoryt from "./pages/QuicklookInventoryt";
+import InventoryStation from "./pages/InventoryStation";
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
       <Route path="/sector/:sector/:station" element={<StationInventory />} />
       <Route path="/quicklook" element={<QuicklookInventory />} />
       <Route path="/quicklookt" element={<QuicklookInventoryt />} />
+      <Route path="/inventory" element={<InventoryStation />} />
     </Routes>
   );
 }

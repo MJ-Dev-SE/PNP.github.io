@@ -10,19 +10,17 @@
     <!-- Content Security Policy - Prevents XSS, injection attacks -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
-      script-src 'self' 'wasm-unsafe-eval';
-      style-src 'self' 'unsafe-inline';
+      script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline';
+      style-src 'self' 'unsafe-inline' data:;
       img-src 'self' data: https:;
       font-src 'self' data:;
-      connect-src 'self' https://blxrymicjowtplrkusck.supabase.co;
-      frame-ancestors 'none';
+      connect-src 'self' https://blxrymicjowtplrkusck.supabase.co https://*.supabase.co;
       base-uri 'self';
       form-action 'self';
     " />
     
     <!-- Prevents clickjacking attacks -->
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-    <meta http-equiv="X-Frame-Options" content="SAMEORIGIN" />
     
     <!-- Prevents MIME type sniffing -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
@@ -53,11 +51,5 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    
-    <!-- Security: Initialize security features after DOM load -->
-    <script>
-      // Immediately disable dangerous APIs
-      Object.freeze(Object.prototype);
-    </script>
   </body>
 </html>

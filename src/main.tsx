@@ -6,6 +6,15 @@ import App from "./App";
 // IMPORTANT: this pulls in Tailwind
 import "./index.css";
 
+// ========== ERROR HANDLING ==========
+window.addEventListener("error", (event) => {
+  console.error("Global error:", event.error);
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  console.error("Unhandled promise rejection:", event.reason);
+});
+
 // ========== SECURITY INITIALIZATION ==========
 import {
   enableConsoleProtection,
@@ -13,12 +22,16 @@ import {
   getCSRFToken,
 } from "./utils/security";
 
-// Initialize security features
-enableConsoleProtection();
-enableDOMProtection();
+try {
+  // Initialize security features
+  enableConsoleProtection();
+  enableDOMProtection();
 
-// Generate initial CSRF token
-getCSRFToken();
+  // Generate initial CSRF token
+  getCSRFToken();
+} catch (error) {
+  console.error("Security initialization failed:", error);
+}
 
 // Prevent right-click context menu in production
 if (import.meta.env.PROD) {
@@ -45,10 +58,24 @@ if (import.meta.env.PROD) {
   });
 }
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </React.StrictMode>,
-);
+const root = document.getElementById("root");
+
+if (!root) {
+  throw new Error("Root element not found! Check your index.html");
+}
+
+try {
+  ReactDOM.createRoot(root).render(
+    <React.StrictMode>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </React.StrictMode>,
+  );
+} catch (error) {
+  console.error("Failed to render app:", error);
+  root.innerHTML = `<div style="padding: 20px; color: red; font-family: monospace;">
+    <h1>Error loading app</h1>
+    <pre>${String(error)}</pre>
+  </div>`;
+}

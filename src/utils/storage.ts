@@ -19,12 +19,12 @@ export const SECTOR_BADGES: Record<string, string> = {
   RMFB: rmfb,
 };
 
-export const SECTORS = ["RHQ", "CAVITE", "LAGUNA", "BATANGAS", "RIZAL", "QUEZON", "RMFB"] as const;
+export const SECTORS = ["RHQ", "CAVITE PPO", "LAGUNA PPO", "BATANGAS PPO", "RIZAL PPO", "QUEZON PPO", "RMFB"] as const;
 
 export const itemsKey = (sector: string) => `inventory_items_v5_${sector}`;
 export const stationsKey = (sector: string) => `stations_v1_${sector}`;
 
-export function toNum(n: any) {
+export function toNum(n: unknown) {
     const v = Number(n);
     return Number.isFinite(v) ? v : 0;
 }

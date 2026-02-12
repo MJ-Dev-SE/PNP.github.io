@@ -80,7 +80,7 @@ export const generateCSRFToken = (): string => {
 };
 
 export const getCSRFToken = (): string => {
-  let tokenData = sessionStorage.getItem(CSRF_TOKEN_KEY);
+  const tokenData = sessionStorage.getItem(CSRF_TOKEN_KEY);
 
   if (!tokenData) {
     return generateCSRFToken();
@@ -194,10 +194,9 @@ export const getSecureRequestHeaders = (): HeadersInit => {
 };
 
 // ============================================================================
-// RATE LIMITING - Prevents brute force attacks
+// RATE LIMITING - CLIENT-SIDE DISABLED (Use server-side rate limiting)
 // ============================================================================
-const RATE_LIMIT_STORE = new Map<string, { count: number; resetTime: number }>(
-);
+const RATE_LIMIT_STORE = new Map<string, { attempts: number; windowStart: number }>();
 
 export const checkRateLimit = (
   key: string,
@@ -205,23 +204,21 @@ export const checkRateLimit = (
   windowMs = 60000
 ): boolean => {
   const now = Date.now();
-  const record = RATE_LIMIT_STORE.get(key);
+  const existing = RATE_LIMIT_STORE.get(key);
 
-  if (!record) {
-    RATE_LIMIT_STORE.set(key, { count: 1, resetTime: now + windowMs });
+  if (!existing || now - existing.windowStart > windowMs) {
+    RATE_LIMIT_STORE.set(key, { attempts: 1, windowStart: now });
     return true;
   }
 
-  if (now > record.resetTime) {
-    RATE_LIMIT_STORE.set(key, { count: 1, resetTime: now + windowMs });
-    return true;
-  }
-
-  if (record.count >= maxAttempts) {
+  if (existing.attempts >= maxAttempts) {
     return false;
   }
 
-  record.count++;
+  RATE_LIMIT_STORE.set(key, {
+    attempts: existing.attempts + 1,
+    windowStart: existing.windowStart,
+  });
   return true;
 };
 
@@ -230,70 +227,19 @@ export const resetRateLimit = (key: string): void => {
 };
 
 // ============================================================================
-// CONSOLE SECURITY - Prevents malicious console injection
+// CONSOLE SECURITY - DISABLED (Minimal security approach)
 // ============================================================================
 export const enableConsoleProtection = (): void => {
-  // Disable dangerous console methods in production
-  if (import.meta.env.PROD) {
-    (console as any).log = () => {};
-    (console as any).warn = () => {};
-    (console as any).error = () => {};
-    (console as any).debug = () => {};
-  }
-
-  // Warn about developer tools
-  const devtoolsCheck = () => {
-    const start = new Date().getTime();
-    debugger; // This will pause if devtools open
-    const end = new Date().getTime();
-
-    if (end - start > 100) {
-      console.clear();
-      console.log(
-        "%c⚠️ Developer Tools Detected!",
-        "color: red; font-size: 20px; font-weight: bold;"
-      );
-      console.log(
-        "%cThis is a restricted area. Unauthorized access attempts are logged.",
-        "color: orange; font-size: 14px;"
-      );
-    }
-  };
-
-  // Run check periodically in production
-  if (import.meta.env.PROD) {
-    setInterval(devtoolsCheck, 5000);
-  }
+  // Disabled for minimal security overhead
+  // Console access is not a critical security concern for this app
 };
 
 // ============================================================================
-// ANTI-TAMPERING - Detects DOM manipulation
+// ANTI-TAMPERING - DISABLED (Minimal security approach)
 // ============================================================================
 export const enableDOMProtection = (): void => {
-  const originalSetAttribute = Element.prototype.setAttribute;
-  const originalRemoveAttribute = Element.prototype.removeAttribute;
-
-  Element.prototype.setAttribute = function (
-    this: Element,
-    name: string,
-    value: string
-  ) {
-    // Log suspicious attribute changes
-    if (
-      name.toLowerCase().startsWith("on") ||
-      name.toLowerCase() === "innerHTML"
-    ) {
-      console.warn(`⚠️ Suspicious attribute change: ${name}`);
-    }
-    return originalSetAttribute.call(this, name, value);
-  };
-
-  Element.prototype.removeAttribute = function (
-    this: Element,
-    name: string
-  ) {
-    return originalRemoveAttribute.call(this, name);
-  }
+  // Disabled for minimal security overhead
+  // DOM protection adds significant runtime cost with minimal threat mitigation
 };
 
 // ============================================================================
