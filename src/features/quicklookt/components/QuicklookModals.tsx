@@ -11,15 +11,15 @@ type ColumnTotals = {
   validated: { yes: number; no: number; rate: number };
   attention: {
     unserviceable: number;
-    forRepair: number;
-    forDisposal: number;
+    ber: number;
+    issued: number;
     idleServiceable: number;
   };
   matrix: Record<string, Record<string, number>>;
 };
 
 type ValidatedItem = {
-  id: number;
+  id: string;
   date: Date;
   name: string;
   ppo: string;
@@ -275,13 +275,13 @@ export function SummaryModal({
                 Unserviceable: <b>{columnTotals.attention.unserviceable}</b>
               </div>
               <div>
-                For Repair: <b>{columnTotals.attention.forRepair}</b>
+                BER: <b>{columnTotals.attention.ber}</b>
               </div>
               <div>
-                For Disposal: <b>{columnTotals.attention.forDisposal}</b>
+                Issued: <b>{columnTotals.attention.issued}</b>
               </div>
               <div>
-                Serviceable but Not Issued:{" "}
+                Serviceable but Onhand:{" "}
                 <b>{columnTotals.attention.idleServiceable}</b>
               </div>
             </div>
@@ -336,8 +336,11 @@ export function SummaryModal({
               <thead>
                 <tr className="bg-slate-100 text-xs">
                   <th className="border px-2 py-1 text-left">Status</th>
-                  <th className="border px-2 py-1">Issued</th>
-                  <th className="border px-2 py-1">Not Issued</th>
+                  {ISSUANCE_OPTIONS.map((label) => (
+                    <th key={label} className="border px-2 py-1">
+                      {label}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -347,12 +350,11 @@ export function SummaryModal({
                       <td className="border px-2 py-1 font-semibold">
                         {status}
                       </td>
-                      <td className="border px-2 py-1 text-center">
-                        {issuance["ISSUED"] || 0}
-                      </td>
-                      <td className="border px-2 py-1 text-center">
-                        {issuance["NOT ISSUED"] || 0}
-                      </td>
+                      {ISSUANCE_OPTIONS.map((label) => (
+                        <td key={label} className="border px-2 py-1 text-center">
+                          {issuance[label] || 0}
+                        </td>
+                      ))}
                     </tr>
                   ),
                 )}

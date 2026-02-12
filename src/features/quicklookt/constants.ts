@@ -9,14 +9,9 @@ export const PPO_LOGOS = [
   "/ppo/ppo5.png",
 ];
 
-export const STATUS_OPTIONS = ["SERVICEABLE", "UNSERVICEABLE", "FOR REPAIR"];
-export const DISPOSITION_OPTIONS = [
-  "ASSIGNED",
-  "FOR REPAIR",
-  "FOR DISPOSAL",
-  "STOCK",
-];
-export const ISSUANCE_OPTIONS = ["ISSUED", "NOT ISSUED"];
+export const STATUS_OPTIONS = ["SERVICEABLE", "UNSERVICEABLE", "BER"];
+export const DISPOSITION_OPTIONS = ["ONHAND", "ISSUED"];
+export const ISSUANCE_OPTIONS = ["ASSIGNED", "TEMPORARY", "PERMANENT"];
 export const CALABARZON_ORDER = [
   "CAVITE",
   "LAGUNA",

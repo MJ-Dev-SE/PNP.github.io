@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { supabase } from "../../lib/supabase";
-import { mapQuicklookRowToItem, type InventoryItem } from "./model";
+import { mapCstationRowToItem, type InventoryItem } from "./model";
 
 export const useQuicklooktData = () => {
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -18,37 +18,47 @@ export const useQuicklooktData = () => {
       const minLoadingTime = 2500;
       const start = Date.now();
       try {
-        const { data, error } = await supabase
-          .from("quicklook_inventory_t_ordered")
-          .select(
-            `
-    quicklook_id,
-    ppo,
-    station,
-    serial_number,
-    type_parent,
-    type_child,
-    make_parent,
-    make_child,
-    model,
-    name,
-    status,
-    disposition,
-    issuance_type,
-    validated,
-    validated_at
-  `,
-          )
-          .order("ppo")
-          .order("station");
+        const attempts = [
+          async () =>
+            supabase
+              .from("cstation_inventory")
+              .select("*")
+              .order("sector")
+              .order("station"),
+          async () =>
+            supabase
+              .from("cstation_inventory_form")
+              .select("*")
+              .order("sector")
+              .order("station"),
+        ];
 
-        if (error) {
-          console.error("Fetch error:", error);
-          Swal.fire("Error", "Failed to fetch inventory data", "error");
-          return;
+        let lastError:
+          | { code?: string; message?: string; details?: string | null; hint?: string | null }
+          | null = null;
+
+        for (const query of attempts) {
+          const result = await query();
+
+          if (!result.error) {
+            setItems((result.data ?? []).map(mapCstationRowToItem));
+            return;
+          }
+
+          lastError = {
+            code: result.error.code,
+            message: result.error.message,
+            details: result.error.details,
+            hint: result.error.hint,
+          };
         }
 
-        setItems((data ?? []).map(mapQuicklookRowToItem));
+        console.error("Fetch error (table + view):", lastError);
+        Swal.fire(
+          "Error",
+          `Failed to fetch inventory data.\n${lastError?.code ?? ""} ${lastError?.message ?? ""}`.trim(),
+          "error",
+        );
       } finally {
         const elapsed = Date.now() - start;
         if (elapsed < minLoadingTime) {

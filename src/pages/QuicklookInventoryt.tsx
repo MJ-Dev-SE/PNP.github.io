@@ -8,6 +8,7 @@ import {
   PPO_LOGOS,
 } from "../features/quicklookt/constants";
 import {
+  TYPE_CONFIG,
   type InventoryItem,
   type TypeParent,
 } from "../features/quicklookt/model";
@@ -29,24 +30,16 @@ import {
 } from "../features/quicklookt/components/QuicklookModals";
 import { supabase } from "../lib/supabase";
 
-
 export default function QuicklookInventory() {
   const nav = useNavigate();
 
-  const {
-    items,
-    setItems,
-    loading,
-    setCanValidate,
-    setUser,
-  } = useQuicklooktData();
+  const { items, setItems, loading, setCanValidate, setUser } =
+    useQuicklooktData();
 
   // filter states drive all memoized selectors below
   const [ppo, setPpo] = useState("All PPOs");
   const [station, setStation] = useState("All Stations");
-  const [selectedType, setSelectedType] = useState<
-    TypeParent | "All"
-  >("All");
+  const [selectedType, setSelectedType] = useState<TypeParent | "All">("All");
   const [selectedChild, setSelectedChild] = useState<string>("All");
 
   // edit-related states are isolated so table rendering stays pure
@@ -61,14 +54,13 @@ export default function QuicklookInventory() {
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
   const [editingCell, setEditingCell] = useState<{
-    id: number;
+    id: string;
     field: keyof InventoryItem;
   } | null>(null);
 
   const [inlineValue, setInlineValue] = useState<string>("");
   const isSavingInlineRef = useRef(false);
   const originalInlineValueRef = useRef<string>("");
-
 
   const exportToExcel = () => {
     const table = document.querySelector("table");
@@ -189,8 +181,42 @@ export default function QuicklookInventory() {
     return ["All Stations", ...Array.from(unique)];
   }, [items, ppo]);
 
+  const typeChildren = useMemo(() => {
+    if (selectedType === "All") return ["All"];
+
+    const normalizeSpell = (value: string) =>
+      value.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    const selectedTypeNormalized = normalizeSpell(selectedType);
+    const typeHints = TYPE_CONFIG[selectedType].children.map(normalizeSpell);
+
+    const unique = new Set(
+      items
+        .filter((i) => {
+          const rowType = normalizeSpell(i.typeChild || "");
+          return (
+            rowType === selectedTypeNormalized ||
+            rowType.includes(selectedTypeNormalized) ||
+            i.typeParent === selectedType ||
+            typeHints.some(
+              (hint) =>
+                rowType === hint ||
+                rowType.includes(hint) ||
+                hint.includes(rowType),
+            )
+          );
+        })
+        .map((i) => i.typeChild)
+        .filter(Boolean),
+    );
+
+    return ["All", ...Array.from(unique).sort((a, b) => a.localeCompare(b))];
+  }, [items, selectedType]);
+
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const normalizeSpell = (value: string) =>
+      value.toLowerCase().replace(/[^a-z0-9]/g, "");
 
     return items
       .filter((i) => {
@@ -198,19 +224,39 @@ export default function QuicklookInventory() {
         if (station !== "All Stations" && i.station !== station) return false;
 
         if (selectedType !== "All") {
-          if (i.typeParent !== selectedType) return false;
-          if (selectedChild !== "All" && i.makeChild !== selectedChild)
+          const rowType = normalizeSpell(i.typeChild || "");
+          const selectedTypeNormalized = normalizeSpell(selectedType);
+          const selectedTypeHints =
+            TYPE_CONFIG[selectedType].children.map(normalizeSpell);
+          const typeMatch =
+            rowType === selectedTypeNormalized ||
+            rowType.includes(selectedTypeNormalized) ||
+            i.typeParent === selectedType ||
+            selectedTypeHints.some(
+              (hint) =>
+                rowType === hint ||
+                rowType.includes(hint) ||
+                hint.includes(rowType),
+            );
+
+          if (!typeMatch) return false;
+
+          if (
+            selectedChild !== "All" &&
+            normalizeSpell(i.typeChild || "") !== normalizeSpell(selectedChild)
+          ) {
             return false;
+          }
         }
 
         if (q) {
           // 🔒 ISSUANCE-ONLY search
           if ("issued".startsWith(q)) {
-            return i.issuanceType === "ISSUED";
+            return i.disposition === "ISSUED";
           }
 
-          if ("not issued".startsWith(q.replace(/\s+/g, " "))) {
-            return i.issuanceType === "NOT ISSUED";
+          if ("onhand".startsWith(q.replace(/\s+/g, " "))) {
+            return i.disposition === "ONHAND";
           }
 
           // 🔒 STATUS-ONLY search (PARTIAL / PREFIX MATCH)
@@ -222,8 +268,8 @@ export default function QuicklookInventory() {
             return i.status === "UNSERVICEABLE";
           }
 
-          if ("for repair".startsWith(q) || "repair".startsWith(q)) {
-            return i.status === "FOR REPAIR";
+          if ("ber".startsWith(q)) {
+            return i.status === "BER";
           }
 
           // 🔍 normal text search fallback
@@ -298,10 +344,10 @@ export default function QuicklookInventory() {
 
     const attention = {
       unserviceable: rows.filter((r) => r.status === "UNSERVICEABLE").length,
-      forRepair: rows.filter((r) => r.status === "FOR REPAIR").length,
-      forDisposal: rows.filter((r) => r.disposition === "FOR DISPOSAL").length,
+      ber: rows.filter((r) => r.status === "BER").length,
+      issued: rows.filter((r) => r.disposition === "ISSUED").length,
       idleServiceable: rows.filter(
-        (r) => r.status === "SERVICEABLE" && r.issuanceType === "NOT ISSUED",
+        (r) => r.status === "SERVICEABLE" && r.disposition === "ONHAND",
       ).length,
     };
 
@@ -333,10 +379,7 @@ export default function QuicklookInventory() {
         return "STATUS OF LONG FIREARMS";
       case "Short FAS":
         return "STATUS OF SHORT FIREARMS";
-      case "Motor Vehicle":
-        return "STATUS OF MOTOR VEHICLES";
-      case "Communication Equipment":
-        return "STATUS OF COMMUNICATION EQUIPMENTS";
+
       default:
         return "STATUS OF EQUIPMENTS";
     }
@@ -477,6 +520,7 @@ export default function QuicklookInventory() {
           }}
           selectedChild={selectedChild}
           onSelectedChildChange={setSelectedChild}
+          typeChildren={typeChildren}
         />
 
         <QuicklookTable
@@ -550,5 +594,3 @@ export default function QuicklookInventory() {
     </div>
   );
 }
-
-

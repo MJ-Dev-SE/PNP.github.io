@@ -1,66 +1,27 @@
-//automatic change of status, actions related like delete and validations also involve in this part
+// automatic change of status, actions related like delete and validations also involve in this part
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import Swal from "sweetalert2";
 import { supabase } from "../../lib/supabase";
-import type { InventoryItem } from "./model";
+import {
+  mapDispositionToDb,
+  mapIssuanceToDb,
+  mapStatusToDb,
+  type InventoryItem,
+} from "./model";
 
 export const applySmartDefaultsForEdit = (
   prev: Partial<InventoryItem>,
   field: "status" | "disposition",
   value: string,
 ) => {
-  const next: Partial<InventoryItem> = { ...prev, [field]: value };
-
-  if (field === "status") {
-    if (value === "UNSERVICEABLE" || value === "FOR REPAIR") {
-      next.disposition = "FOR REPAIR";
-      next.issuanceType = "NOT ISSUED";
-    }
-
-    if (value === "SERVICEABLE") {
-      if (!prev.disposition) next.disposition = "ASSIGNED";
-      if (!prev.issuanceType) next.issuanceType = "ISSUED";
-    }
-  }
-
-  if (field === "disposition") {
-    if (value === "ASSIGNED") {
-      next.issuanceType = "ISSUED";
-    }
-
-    if (value === "FOR REPAIR" || value === "FOR DISPOSAL") {
-      next.issuanceType = "NOT ISSUED";
-    }
-  }
-
-  return next;
+  return { ...prev, [field]: value };
 };
 
 export const deriveByStatus = (current: InventoryItem, newStatus: string) => {
-  let disposition = current.disposition;
-  let issuanceType = current.issuanceType;
-
-  if (newStatus === "UNSERVICEABLE") {
-    if (current.disposition !== "FOR REPAIR") {
-      disposition = "FOR DISPOSAL";
-    }
-    issuanceType = "NOT ISSUED";
-  }
-
-  if (newStatus === "FOR REPAIR") {
-    disposition = "FOR REPAIR";
-    issuanceType = "NOT ISSUED";
-  }
-
-  if (newStatus === "SERVICEABLE") {
-    disposition = "ASSIGNED";
-    issuanceType = "ISSUED";
-  }
-
   return {
     status: newStatus,
-    disposition,
-    issuanceType,
+    disposition: current.disposition,
+    issuanceType: current.issuanceType,
   };
 };
 
@@ -71,7 +32,7 @@ type SaveInlineEditParams = {
   isSavingInlineRef: MutableRefObject<boolean>;
   setItems: Dispatch<SetStateAction<InventoryItem[]>>;
   setEditingCell: Dispatch<
-    SetStateAction<{ id: number; field: keyof InventoryItem } | null>
+    SetStateAction<{ id: string; field: keyof InventoryItem } | null>
   >;
 };
 
@@ -88,29 +49,40 @@ export const saveInlineEditAction = async ({
   let updatePayload: Record<string, string> = {};
 
   if (field === "status") {
-    const derived = deriveByStatus(item, value);
     updatePayload = {
-      status: derived.status,
-      disposition: derived.disposition,
-      issuance_type: derived.issuanceType,
+      status: mapStatusToDb(value),
     };
   } else {
     const dbFieldMap: Record<string, string> = {
-      model: "model",
-      name: "name",
+      model: "type",
+      name: "equipment",
       disposition: "disposition",
-      issuanceType: "issuance_type",
+      issuanceType: "issuance",
+      serialNumber: "serial_no",
+      typeChild: "type",
+      makeChild: "make",
     };
 
-    updatePayload = {
-      [dbFieldMap[field]]: value,
-    };
+    const dbField = dbFieldMap[field];
+    if (!dbField) {
+      isSavingInlineRef.current = false;
+      setEditingCell(null);
+      return;
+    }
+
+    if (field === "disposition") {
+      updatePayload = { [dbField]: mapDispositionToDb(value) };
+    } else if (field === "issuanceType") {
+      updatePayload = { [dbField]: mapIssuanceToDb(value) };
+    } else {
+      updatePayload = { [dbField]: value };
+    }
   }
 
   const { error } = await supabase
-    .from("quicklook_inventory_t")
+    .from("cstation_inventory")
     .update(updatePayload)
-    .eq("quicklook_id", item.id);
+    .eq("id", item.id);
 
   isSavingInlineRef.current = false;
 
@@ -143,14 +115,15 @@ export const toggleValidationAction = async ({
   setItems,
 }: ToggleValidationParams) => {
   const newValidated = !item.validated;
+  const validatedAt = newValidated ? new Date().toISOString() : null;
 
   const { error } = await supabase
-    .from("quicklook_inventory_t")
+    .from("cstation_inventory")
     .update({
       validated: newValidated,
-      validated_at: newValidated ? new Date().toISOString() : null,
+      validated_at: validatedAt,
     })
-    .eq("quicklook_id", item.id);
+    .eq("id", item.id);
 
   if (error) {
     Swal.fire("Error", "Failed to update validation", "error");
@@ -163,7 +136,7 @@ export const toggleValidationAction = async ({
         ? {
             ...i,
             validated: newValidated,
-            validatedAt: newValidated ? new Date().toISOString() : null,
+            validatedAt,
           }
         : i,
     ),
@@ -261,9 +234,9 @@ export const deleteInventoryItemAction = async ({
   if (!result.isConfirmed) return;
 
   const { error } = await supabase
-    .from("quicklook_inventory_t")
+    .from("cstation_inventory")
     .delete()
-    .eq("quicklook_id", item.id);
+    .eq("id", item.id);
 
   if (error) {
     Swal.fire("Error", "Failed to delete record", "error");
@@ -299,15 +272,21 @@ export const saveEditInventoryItemAction = async ({
   if (!result.isConfirmed) return;
 
   const { error } = await supabase
-    .from("quicklook_inventory_t")
+    .from("cstation_inventory")
     .update({
-      model: editForm.model,
-      name: editForm.name,
-      status: editForm.status,
-      disposition: editForm.disposition,
-      issuance_type: editForm.issuanceType,
+      serial_no: editForm.serialNumber,
+      type: editForm.typeChild ?? editForm.model,
+      make: editForm.makeChild,
+      equipment: editForm.name,
+      status: editForm.status ? mapStatusToDb(editForm.status) : undefined,
+      disposition: editForm.disposition
+        ? mapDispositionToDb(editForm.disposition)
+        : undefined,
+      issuance: editForm.issuanceType
+        ? mapIssuanceToDb(editForm.issuanceType)
+        : undefined,
     })
-    .eq("quicklook_id", editItem.id);
+    .eq("id", editItem.id);
 
   if (error) {
     Swal.fire("Error", "Update failed", "error");

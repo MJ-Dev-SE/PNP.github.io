@@ -8,7 +8,7 @@ import {
 import type { InventoryItem } from "../model";
 
 type EditingCell = {
-  id: number;
+  id: string;
   field: keyof InventoryItem;
 } | null;
 
@@ -93,8 +93,6 @@ export function QuicklookTable({
               <th className="px-3 py-2">Serial No.</th>
               <th className="px-3 py-2">Type</th>
               <th className="px-3 py-2">Make</th>
-              <th className="px-3 py-2">Model</th>
-              <th className="px-3 py-2">Name</th>
               <th className="px-3 py-2">Status</th>
               <th className="px-3 py-2">Disposition</th>
               <th className="px-3 py-2">Issuance</th>
@@ -128,54 +126,6 @@ export function QuicklookTable({
                   <div className="text-xs text-slate-500">
                     {highlightText(r.makeChild, search)}
                   </div>
-                </td>
-
-                <td className="px-3 py-2 text-center">
-                  {editingCell?.id === r.id && editingCell.field === "model" ? (
-                    <input
-                      autoFocus
-                      className="rounded border px-2 py-1 text-xs w-full"
-                      value={inlineValue}
-                      onChange={(e) => setInlineValue(e.target.value)}
-                      onBlur={() => handleInlineBlur(r, "model")}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          void saveInlineEdit(r, "model", inlineValue);
-                        }
-
-                        if (e.key === "Escape") {
-                          cancelInlineEdit();
-                        }
-                      }}
-                    />
-                  ) : (
-                    <span>{r.model || "-"}</span>
-                  )}
-                </td>
-
-                <td className="px-3 py-2 text-center">
-                  {editingCell?.id === r.id && editingCell.field === "name" ? (
-                    <input
-                      autoFocus
-                      className="rounded border px-2 py-1 text-xs w-full"
-                      value={inlineValue}
-                      onChange={(e) => setInlineValue(e.target.value)}
-                      onBlur={() => handleInlineBlur(r, "name")}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          void saveInlineEdit(r, "name", inlineValue);
-                        }
-
-                        if (e.key === "Escape") {
-                          cancelInlineEdit();
-                        }
-                      }}
-                    />
-                  ) : (
-                    <span>{r.name || "-"}</span>
-                  )}
                 </td>
 
                 <td className="px-3 py-2 text-center">

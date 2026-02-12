@@ -15,6 +15,7 @@ type QuicklookFiltersProps = {
   onSelectedTypeChange: (value: TypeParent | "All") => void;
   selectedChild: string;
   onSelectedChildChange: (value: string) => void;
+  typeChildren: string[];
 };
 
 export function QuicklookFilters({
@@ -31,6 +32,7 @@ export function QuicklookFilters({
   onSelectedTypeChange,
   selectedChild,
   onSelectedChildChange,
+  typeChildren,
 }: QuicklookFiltersProps) {
   return (
     <section className="rounded-2xl border border-slate-200/70 bg-white/70 p-4 shadow-sm backdrop-blur">
@@ -103,13 +105,11 @@ export function QuicklookFilters({
           onChange={(e) => onSelectedChildChange(e.target.value)}
           className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm shadow-sm disabled:opacity-50"
         >
-          <option value="All">All</option>
-          {selectedType !== "All" &&
-            TYPE_CONFIG[selectedType].children.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
+          {typeChildren.map((value) => (
+            <option key={value} value={value}>
+              {value}
+            </option>
+          ))}
         </select>
       </div>
     </section>
