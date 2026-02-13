@@ -1,10 +1,10 @@
 //overall ui with Station Inventory
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { toNum } from "../../utils/storage";
+import { toNum, getSession, clearSession } from "../../utils/storage";
+import Swal from "sweetalert2";
 import { Card, Th, Input } from "../../components/UI";
 import { supabase } from "../../lib/supabase";
-import Swal from "sweetalert2";
 import PpoGridLoader from "../../components/PpoGridLoader";
 import { CSV_HEADERS, PAGE_SIZE, PPO_LOGOS } from "./constants";
 import { mapRowToItem } from "./mapper";
@@ -39,15 +39,32 @@ export default function StationInventory() {
 
   const [tableCleared, setTableCleared] = useState(false);
   const [page, setPage] = useState(1);
+  const csvInputRef = useRef<HTMLInputElement | null>(null);
 
   const sleep = (ms: number) =>
     new Promise((resolve) => setTimeout(resolve, ms));
   const [initialLoading, setInitialLoading] = useState(true);
   const [csvLimit, setCsvLimit] = useState<number | null>(null);
+  const [noSession, setNoSession] = useState(false);
 
-  const session = JSON.parse(
-    localStorage.getItem("inventory_session") || "null",
-  );
+  const session = getSession();
+
+  // Check for session on mount - redirect if not logged in
+  useEffect(() => {
+    if (!session) {
+      setNoSession(true);
+      Swal.fire({
+        title: "Access Denied",
+        text: "You must log in to access this station.",
+        icon: "warning",
+        confirmButtonText: "Go to Sector Dashboard",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+      }).then(() => {
+        nav(`/sector/${encodeURIComponent(sector)}`);
+      });
+    }
+  }, [session, sector, nav]);
 
   const handleEditImageUpload = (files: FileList) => {
     const arr = Array.from(files);
@@ -546,6 +563,9 @@ export default function StationInventory() {
       ber: "ber",
       beyondrepair: "ber",
     };
+    if (statusRaw && STATUS_MAP[statusRaw]) {
+      payload.status = STATUS_MAP[statusRaw];
+    }
 
     const sourceRaw = clean(row.source);
     const SOURCE_MAP: Record<string, string> = {
@@ -641,6 +661,77 @@ export default function StationInventory() {
       .slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleExportClick = async () => {
+    const result = await Swal.fire({
+      title: "CSV viewing guide",
+      icon: "info",
+      width: 680,
+      confirmButtonText: "Continue export",
+      showCancelButton: true,
+      cancelButtonText: "Cancel",
+      html: `
+        <div style="text-align:left">
+          <p style="margin-bottom:8px;">
+            After exporting, open the CSV in Excel and check date cells like <code>acquisition_date</code>.
+          </p>
+          <p style="margin-bottom:8px;">
+            If date value looks hidden or appears as ####:
+          </p>
+          <ol style="margin:0 0 8px 18px; padding:0;">
+            <li>Click the date cell once.</li>
+            <li>Double-click the same cell to reveal full value.</li>
+            <li>Widen the column if needed.</li>
+          </ol>
+          <p style="margin-bottom:0;">
+            You can also format the column as <code>Date</code> to display it properly.
+          </p>
+        </div>
+      `,
+    });
+
+    if (result.isConfirmed) {
+      exportCSV();
+    }
+  };
+
+  const handleImportClick = async () => {
+    const headers = Array.from(new Set(CSV_HEADERS));
+    const headerList = headers.map((h) => `<code>${h}</code>`).join(", ");
+
+    const result = await Swal.fire({
+      title: "CSV format check",
+      icon: "info",
+      width: 700,
+      confirmButtonText: "I understand, continue",
+      showCancelButton: true,
+      cancelButtonText: "Cancel",
+      html: `
+        <div style="text-align:left">
+          <p style="margin-bottom:8px;">
+            Use exact column names and spelling to avoid import errors.
+          </p>
+          <p style="margin-bottom:8px;">
+            <strong>Required headers:</strong><br/>${headerList}
+          </p>
+          <p style="margin-bottom:8px;">
+            <strong>Accepted values:</strong><br/>
+            <code>status</code>: svc, uns, ber<br/>
+            <code>source</code>: organic, donated, loaned<br/>
+            <code>disposition</code>: onhand, issued<br/>
+            <code>issuance</code>: assigned, temporary, permanent
+          </p>
+          <p style="margin-bottom:0;">
+            Use <code>YYYY-MM-DD</code> for <code>acquisition_date</code> and numeric values for cost columns.
+          </p>
+        </div>
+      `,
+    });
+
+    if (result.isConfirmed) {
+      csvInputRef.current?.click();
+    }
   };
 
   // IMPORT CSV → insert into Supabase
@@ -771,8 +862,33 @@ export default function StationInventory() {
               {sector} • {station} — Inventory
             </h1>
           </div>
-          <div className="flex gap-2">
-            <button onClick={exportCSV} className="soft-btn px-3 py-2">
+          <div className="flex gap-2 items-center">
+            {session && (
+              <span className="text-xs text-slate-700 bg-slate-100 px-2 py-1 rounded">
+                {session.name || session.department}
+              </span>
+            )}
+            <button
+              onClick={() => {
+                Swal.fire({
+                  title: "Logout",
+                  text: "Are you sure you want to logout?",
+                  icon: "question",
+                  showCancelButton: true,
+                  confirmButtonText: "Yes, logout",
+                  cancelButtonText: "Cancel",
+                }).then((result) => {
+                  if (result.isConfirmed) {
+                    clearSession();
+                    nav(`/sector/${encodeURIComponent(sector)}`);
+                  }
+                });
+              }}
+              className="soft-btn px-3 py-2 bg-red-50 text-red-700 hover:bg-red-100"
+            >
+              Logout
+            </button>
+            <button onClick={handleExportClick} className="soft-btn px-3 py-2">
               Export CSV
             </button>
 
@@ -818,17 +934,26 @@ export default function StationInventory() {
               </button>
             )}
 
-            <label className="soft-btn px-3 py-2 cursor-pointer">
+            <button
+              type="button"
+              onClick={handleImportClick}
+              className="soft-btn px-3 py-2"
+            >
               Import CSV
-              <input
-                type="file"
-                accept=".csv"
-                className="hidden"
-                onChange={(e) =>
-                  e.target.files?.[0] && importCSV(e.target.files[0])
+            </button>
+            <input
+              ref={csvInputRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) {
+                  importCSV(file);
                 }
-              />
-            </label>
+              }}
+            />
           </div>
         </div>
       </header>
@@ -1502,7 +1627,7 @@ export default function StationInventory() {
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       className="disabled:text-slate-300"
                     >
-                      &lt;
+                      {"<"}
                     </button>
 
                     <span className="font-medium">
@@ -1516,7 +1641,7 @@ export default function StationInventory() {
                       }
                       className="disabled:text-slate-300"
                     >
-                      &gt;
+                      {">"}
                     </button>
                   </div>
                 </div>

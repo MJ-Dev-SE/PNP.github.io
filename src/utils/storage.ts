@@ -47,3 +47,23 @@ export function loadStations(sector: string): string[] {
 export function saveStations(sector: string, list: string[]) {
     localStorage.setItem(stationsKey(sector), JSON.stringify(list));
 }
+
+// Session management
+export interface SessionData {
+  department: string;
+  name: string;
+  station?: string;
+}
+
+export function getSession(): SessionData | null {
+    try {
+        const raw = localStorage.getItem("inventory_session");
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+}
+
+export function clearSession(): void {
+    localStorage.removeItem("inventory_session");
+}

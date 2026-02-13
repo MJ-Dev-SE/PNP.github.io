@@ -1,7 +1,14 @@
 //overall ui within sector dashboard
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { itemsKey, loadStations, saveStations } from "../../utils/storage";
+import {
+  itemsKey,
+  loadStations,
+  saveStations,
+  getSession,
+  clearSession,
+} from "../../utils/storage";
+
 import { MiniStat } from "../../components/UI";
 import { supabase } from "../../lib/supabase";
 import Swal from "sweetalert2";
@@ -58,6 +65,12 @@ export default function SectorDashboard() {
   const sleep = (ms: number) =>
     new Promise((resolve) => setTimeout(resolve, ms));
   const [loading, setLoading] = useState(true);
+  const [sessionActive, setSessionActive] = useState(false);
+  const [activeSession, setActiveSession] = useState<{
+    department: string;
+    name: string;
+    station?: string;
+  } | null>(null);
 
   const handleAccess = async () => {
     if (!dept || !pin) {
@@ -148,7 +161,7 @@ export default function SectorDashboard() {
     // ✅ ENTER SUCCESS → SAVE SESSION & NAVIGATE
     localStorage.setItem(
       "inventory_session",
-      JSON.stringify({ department: dept, name }),
+      JSON.stringify({ department: dept, name, station: pendingStation }),
     );
 
     setShowAccess(false);
@@ -163,6 +176,17 @@ export default function SectorDashboard() {
       )}`,
     );
   };
+
+  /**
+   * Check for active session on mount - prevent access if logged in
+   */
+  useEffect(() => {
+    const session = getSession();
+    if (session) {
+      setActiveSession(session);
+      setSessionActive(true);
+    }
+  }, []);
 
   /**
    * Re-sync stations when sector changes.
@@ -583,6 +607,70 @@ export default function SectorDashboard() {
                   {isSignup ? "Create Account" : "Enter"}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Session Active Modal - Blocks access if user is already logged in */}
+      {sessionActive && activeSession && (
+        <div className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl border border-slate-200/50">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
+                <svg
+                  className="h-6 w-6 text-amber-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-slate-900 text-lg">
+                Session Active
+              </h3>
+            </div>
+
+            <p className="text-sm text-slate-600 mb-2">
+              You are currently logged in as:
+            </p>
+            <div className="bg-slate-50 rounded-xl p-4 mb-5">
+              <div className="text-sm font-medium text-slate-900">
+                {activeSession.name || activeSession.department}
+              </div>
+              <div className="text-xs text-slate-500">
+                Department: {activeSession.department}
+              </div>
+              {activeSession.station && (
+                <div className="text-xs text-slate-500 mt-1">
+                  Station: {activeSession.station}
+                </div>
+              )}
+            </div>
+
+            <p className="text-sm text-slate-600 mb-5">
+              You must log out before accessing the Sector Dashboard.
+            </p>
+
+            <div className="flex flex-col gap-2">
+              {activeSession.station && (
+                <button
+                  onClick={() => {
+                    nav(
+                      `/sector/${encodeURIComponent(sector)}/${encodeURIComponent(activeSession.station!)}`,
+                    );
+                  }}
+                  className="w-full px-4 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition font-medium text-sm"
+                >
+                  Return to {activeSession.station}
+                </button>
+              )}
             </div>
           </div>
         </div>

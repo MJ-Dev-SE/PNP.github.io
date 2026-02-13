@@ -6,7 +6,7 @@ export function ShieldIcon({ className = "" }: { className?: string }) {
     <svg
       viewBox="0 0 24 24"
       aria-hidden="true"
-      className={className}
+      className={`transition-all duration-300 ease-in-out ${className}`}
       fill="none"
       stroke="currentColor"
       strokeWidth="1.5"
@@ -21,6 +21,24 @@ export function ShieldIcon({ className = "" }: { className?: string }) {
         strokeLinejoin="round"
       />
     </svg>
+  );
+}
+
+export function ShieldBadge({
+  className = "",
+  iconClassName = "",
+}: {
+  className?: string;
+  iconClassName?: string;
+}) {
+  return (
+    <div
+      className={`inline-flex items-center justify-center rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 p-2 shadow-sm transition-all duration-300 ease-in-out hover:scale-110 hover:border-blue-300 hover:shadow-md hover:from-blue-100 hover:to-blue-200 ${className}`}
+    >
+      <ShieldIcon
+        className={`h-6 w-6 text-blue-700 transition-transform duration-300 ease-in-out group-hover:scale-105 ${iconClassName}`}
+      />
+    </div>
   );
 }
 

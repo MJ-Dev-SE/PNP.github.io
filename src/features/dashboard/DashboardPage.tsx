@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MiniStat } from "../../components/UI";
 import { supabase } from "../../lib/supabase";
-import { SECTOR_BADGES } from "../../utils/storage";
+import { SECTOR_BADGES, SECTORS } from "../../utils/storage";
 import {
   SearchInput,
   SelectControl,
@@ -39,6 +39,57 @@ type ActivityEntry = {
   timestamp: string;
 };
 
+// Rotating sector badge component
+function RotatingSectorBadge() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setIsTransitioning(true);
+      window.setTimeout(() => {
+        setCurrentIndex((prev) => (prev + 1) % SECTORS.length);
+        setIsTransitioning(false);
+      }, 300);
+    }, 3000);
+
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const currentSector = SECTORS[currentIndex];
+  const badgeSrc = SECTOR_BADGES[currentSector];
+
+  return (
+    <div className="flex flex-col items-center">
+      <div
+        className={`relative h-12 w-12 transition-all duration-300 ease-in-out ${
+          isTransitioning ? "scale-95 opacity-50" : "scale-100 opacity-100"
+        }`}
+        title={currentSector}
+      >
+        {badgeSrc ? (
+          <img
+            src={badgeSrc}
+            alt={`${currentSector} badge`}
+            className="h-full w-full object-contain"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-xs font-bold text-slate-500">
+            {currentSector.charAt(0)}
+          </div>
+        )}
+      </div>
+      <span
+        className={`mt-1 text-xs font-semibold text-slate-700 transition-all duration-300 ${
+          isTransitioning ? "opacity-50" : "opacity-100"
+        }`}
+      >
+        {currentSector}
+      </span>
+    </div>
+  );
+}
+
 const toRecord = (value: unknown): Record<string, unknown> | null =>
   value !== null && typeof value === "object"
     ? (value as Record<string, unknown>)
@@ -68,7 +119,7 @@ export default function Dashboard() {
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState<string | null>(null);
   const [touchOpen, setTouchOpen] = useState(false);
-  const touchHoldTimer = useRef<number | null>(null);
+  const touchHoldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
@@ -193,7 +244,9 @@ export default function Dashboard() {
                       Live Inventory Activity
                     </div>
                     {activityLoading ? (
-                      <div className="text-slate-500">Loading recent activity...</div>
+                      <div className="text-slate-500">
+                        Loading recent activity...
+                      </div>
                     ) : activityError ? (
                       <div className="text-red-600">{activityError}</div>
                     ) : activityEntries.length > 0 ? (
@@ -296,8 +349,8 @@ export default function Dashboard() {
         <section className="grid gap-4">
           <div className="rounded-2xl border border-slate-200/70 bg-white/70 p-4 shadow-sm backdrop-blur">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-center gap-2">
-                <ShieldIcon className="h-9 w-9 text-blue-700" />
+              <div className="flex items-center gap-3">
+                <RotatingSectorBadge />
                 <div className="min-w-0">
                   <h2 className="text-base font-extrabold tracking-tight text-slate-900">
                     Sectors
