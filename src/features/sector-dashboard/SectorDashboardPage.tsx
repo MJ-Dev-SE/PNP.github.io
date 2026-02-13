@@ -178,17 +178,6 @@ export default function SectorDashboard() {
   };
 
   /**
-   * Check for active session on mount - prevent access if logged in
-   */
-  useEffect(() => {
-    const session = getSession();
-    if (session) {
-      setActiveSession(session);
-      setSessionActive(true);
-    }
-  }, []);
-
-  /**
    * Re-sync stations when sector changes.
    * This prevents station bleed between routes.
    */
@@ -414,8 +403,15 @@ export default function SectorDashboard() {
             <button
               key={card.name}
               onClick={() => {
-                setPendingStation(card.name);
-                setShowAccess(true);
+                const existingSession = getSession();
+                if (existingSession) {
+                  setActiveSession(existingSession);
+                  setSessionActive(true);
+                  setPendingStation(card.name);
+                } else {
+                  setPendingStation(card.name);
+                  setShowAccess(true);
+                }
               }}
               className="group relative overflow-hidden rounded-2xl border border-slate-700/60 bg-gradient-to-br from-slate-800 via-slate-800 to-slate-900 p-5 text-left shadow-lg transition hover:-translate-y-0.5 hover:border-slate-500 hover:shadow-xl hover:ring-2 hover:ring-slate-600/60 focus:outline-none focus:ring-4 focus:ring-slate-600"
             >
@@ -450,8 +446,15 @@ export default function SectorDashboard() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setPendingStation(card.name);
-                      setShowAccess(true);
+                      const existingSession = getSession();
+                      if (existingSession) {
+                        setActiveSession(existingSession);
+                        setSessionActive(true);
+                        setPendingStation(card.name);
+                      } else {
+                        setPendingStation(card.name);
+                        setShowAccess(true);
+                      }
                     }}
                     className="flex-1 px-3 py-2 rounded-lg bg-blue-600/80 text-white text-sm font-semibold transition hover:bg-blue-600 active:bg-blue-700"
                   >
