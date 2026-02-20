@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { supabase } from "../../lib/supabase";
 import { mapCstationRowToItem, type InventoryItem } from "./model";
@@ -9,14 +9,16 @@ export const useQuicklooktData = () => {
   const [canValidate, setCanValidate] = useState(false);
   const [user, setUser] = useState<unknown>(null);
 
-  useEffect(() => {
-    const sleep = (ms: number) =>
-      new Promise((resolve) => setTimeout(resolve, ms));
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-    const fetchData = async () => {
-      setLoading(true);
+  const fetchData = useCallback(
+    async ({ silent = false }: { silent?: boolean } = {}) => {
       const minLoadingTime = 2500;
       const start = Date.now();
+      if (!silent) {
+        setLoading(true);
+      }
+
       try {
         const attempts = [
           async () =>
@@ -60,16 +62,53 @@ export const useQuicklooktData = () => {
           "error",
         );
       } finally {
-        const elapsed = Date.now() - start;
-        if (elapsed < minLoadingTime) {
-          await sleep(minLoadingTime - elapsed);
+        if (!silent) {
+          const elapsed = Date.now() - start;
+          if (elapsed < minLoadingTime) {
+            await sleep(minLoadingTime - elapsed);
+          }
+          setLoading(false);
         }
-        setLoading(false);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("quicklookt-cstation-inventory")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "cstation_inventory" },
+        () => {
+          void fetchData({ silent: true });
+        },
+      )
+      .subscribe();
+
+    const onFocus = () => {
+      void fetchData({ silent: true });
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void fetchData({ silent: true });
       }
     };
 
-    fetchData();
-  }, []);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      supabase.removeChannel(channel);
+    };
+  }, [fetchData]);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -97,6 +136,7 @@ export const useQuicklooktData = () => {
     items,
     setItems,
     loading,
+    refresh: () => fetchData({ silent: true }),
     canValidate,
     setCanValidate,
     user,

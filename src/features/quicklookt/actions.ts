@@ -271,25 +271,41 @@ export const saveEditInventoryItemAction = async ({
 
   if (!result.isConfirmed) return;
 
+  const payload: Record<string, unknown> = {};
+
+  if (editForm.serialNumber !== undefined) {
+    payload.serial_no = editForm.serialNumber;
+  }
+
+  const resolvedType = editForm.typeChild ?? editForm.model;
+  if (resolvedType !== undefined) {
+    payload.type = resolvedType;
+  }
+
+  if (editForm.makeChild !== undefined) {
+    payload.make = editForm.makeChild;
+  }
+
+  if (editForm.status) {
+    payload.status = mapStatusToDb(editForm.status);
+  }
+
+  if (editForm.disposition) {
+    payload.disposition = mapDispositionToDb(editForm.disposition);
+  }
+
+  if (editForm.issuanceType) {
+    payload.issuance = mapIssuanceToDb(editForm.issuanceType);
+  }
+
   const { error } = await supabase
     .from("cstation_inventory")
-    .update({
-      serial_no: editForm.serialNumber,
-      type: editForm.typeChild ?? editForm.model,
-      make: editForm.makeChild,
-      equipment: editForm.name,
-      status: editForm.status ? mapStatusToDb(editForm.status) : undefined,
-      disposition: editForm.disposition
-        ? mapDispositionToDb(editForm.disposition)
-        : undefined,
-      issuance: editForm.issuanceType
-        ? mapIssuanceToDb(editForm.issuanceType)
-        : undefined,
-    })
+    .update(payload)
     .eq("id", editItem.id);
 
   if (error) {
-    Swal.fire("Error", "Update failed", "error");
+    console.error("Quicklook edit update failed:", error);
+    Swal.fire("Error", `Update failed: ${error.message}`, "error");
     return;
   }
 

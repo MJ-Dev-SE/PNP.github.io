@@ -249,7 +249,7 @@ export default function StationInventory() {
         semi_expendable_property_nr: String(
           newItem.semi_expendable_property_nr || "",
         ).trim(),
-        acquisition_date: newItem.acquisition_date || null,
+        acquisition_date: newItem.acquisition_date,
         acquisition_cost: toNum(newItem.acquisition_cost),
         cost_of_repair: toNum(newItem.cost_of_repair),
         current_or_depreciated: String(newItem.current_or_depreciated || ""),
@@ -1867,9 +1867,11 @@ export default function StationInventory() {
               </div>
 
               {/* STATUS */}
-              <fieldset className="border rounded-2xl p-3">
-                <legend className="px-2 text-sm text-slate-900">STATUS</legend>
-                <div className="grid md:grid-cols-2 gap-3">
+              <div className="grid md:grid-cols-2 gap-3">
+                <fieldset className="border rounded-2xl p-3">
+                  <legend className="px-2 text-sm text-slate-900">
+                    STATUS
+                  </legend>
                   <select
                     value={editing.status || ""}
                     onChange={(e) =>
@@ -1885,13 +1887,13 @@ export default function StationInventory() {
                     <option value="uns">Uns (Unserviceable)</option>
                     <option value="ber">Ber (Beyond Economic Repair)</option>
                   </select>
-                </div>
-              </fieldset>
+                </fieldset>
 
-              {/* SOURCE */}
-              <fieldset className="border rounded-2xl p-3">
-                <legend className="px-2 text-sm text-slate-900">SOURCE</legend>
-                <div className="grid md:grid-cols-2 gap-3">
+                {/* SOURCE */}
+                <fieldset className="border rounded-2xl p-3">
+                  <legend className="px-2 text-sm text-slate-900">
+                    SOURCE
+                  </legend>
                   <select
                     value={editing.source || ""}
                     onChange={(e) =>
@@ -1910,15 +1912,14 @@ export default function StationInventory() {
                     <option value="donated">Donated</option>
                     <option value="loaned">Loaned</option>
                   </select>
-                </div>
-              </fieldset>
-
+                </fieldset>
+              </div>
               {/* DISPOSITION */}
-              <fieldset className="border rounded-2xl p-3">
-                <legend className="px-2 text-sm text-slate-900">
-                  DISPOSITION
-                </legend>
-                <div className="grid md:grid-cols-2 gap-3">
+              <div className="grid md:grid-cols-2 gap-3">
+                <fieldset className="border rounded-2xl p-3">
+                  <legend className="px-2 text-sm text-slate-900">
+                    DISPOSITION
+                  </legend>
                   <select
                     value={editing.disposition || ""}
                     onChange={(e) =>
@@ -1933,15 +1934,13 @@ export default function StationInventory() {
                     <option value="onhand">On Hand</option>
                     <option value="issued">Issued</option>
                   </select>
-                </div>
-              </fieldset>
+                </fieldset>
 
-              {/* ISSUANCE */}
-              <fieldset className="border rounded-2xl p-3">
-                <legend className="px-2 text-sm text-slate-900">
-                  ISSUANCE
-                </legend>
-                <div className="grid md:grid-cols-2 gap-3">
+                {/* ISSUANCE */}
+                <fieldset className="border rounded-2xl p-3">
+                  <legend className="px-2 text-sm text-slate-900">
+                    ISSUANCE
+                  </legend>
                   <select
                     value={editing.issuance || ""}
                     onChange={(e) =>
@@ -1960,8 +1959,8 @@ export default function StationInventory() {
                     <option value="temporary">Temporary</option>
                     <option value="permanent">Permanent</option>
                   </select>
-                </div>
-              </fieldset>
+                </fieldset>
+              </div>
 
               {/* ON HAND PER COUNT */}
               <fieldset className="border rounded-2xl p-3">

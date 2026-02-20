@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 import PpoGridLoader from "../components/PpoGridLoader";
+import { supabase } from "../lib/supabase";
 import {
   ALL_PPOS,
   ALL_TYPES,
@@ -13,18 +15,57 @@ import {
   getPpoOptions,
   getTypeOptions,
 } from "../features/quicklook/selectors";
+import type { QuicklookRow } from "../features/quicklook/types";
 
-function InlineCell({ value }: { value: number }) {
+type StatusBucket = "svc" | "uns" | "ber";
+type SourceBucket = "organic" | "donated" | "loaned";
+type EditableField = "status" | "source";
+
+const STATUS_LABEL: Record<StatusBucket, string> = {
+  svc: "SVC",
+  uns: "UNSVC",
+  ber: "BER",
+};
+
+const SOURCE_LABEL: Record<SourceBucket, string> = {
+  organic: "ORGANIC",
+  donated: "DONATED",
+  loaned: "LOANED",
+};
+
+function InlineCell({
+  value,
+  interactive = false,
+  onClick,
+}: {
+  value: number;
+  interactive?: boolean;
+  onClick?: () => void;
+}) {
+  if (interactive && onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="w-full rounded px-1 text-center text-blue-700 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-300"
+        title="Click to select row to update"
+      >
+        {value}
+      </button>
+    );
+  }
+
   return <span className="w-full px-1 text-center">{value}</span>;
 }
 
 export default function QuicklookInventory() {
   const nav = useNavigate();
-  const { rows: ppoRows, loading } = useQuicklookData();
+  const { rows: ppoRows, loading, refresh } = useQuicklookData();
   const [ppo, setPpo] = useState(ALL_PPOS);
   const [type, setType] = useState(ALL_TYPES);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [updatingKey, setUpdatingKey] = useState<string | null>(null);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -43,6 +84,200 @@ export default function QuicklookInventory() {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return rows.slice(start, start + ITEMS_PER_PAGE);
   }, [rows, currentPage]);
+
+  const rowKey = (row: QuicklookRow) =>
+    `${row.sector}::${row.station}::${row.type}`;
+
+  const updateFromBucket = async (
+    row: QuicklookRow,
+    field: EditableField,
+    fromValue: StatusBucket | SourceBucket,
+  ) => {
+    const key = `${rowKey(row)}::${field}::${fromValue}`;
+    if (updatingKey === key) return;
+    setUpdatingKey(key);
+
+    try {
+      const isStatus = field === "status";
+      const labelMap = isStatus ? STATUS_LABEL : SOURCE_LABEL;
+      const fromLabel = labelMap[fromValue as keyof typeof labelMap];
+
+      const targetOptions = (isStatus
+        ? (["svc", "uns", "ber"] as StatusBucket[])
+        : (["organic", "donated", "loaned"] as SourceBucket[])
+      )
+        .filter((value) => value !== fromValue)
+        .map((value) => ({
+          value,
+          label: labelMap[value as keyof typeof labelMap],
+        }));
+
+      const targetResult = await Swal.fire({
+        title: `Change ${fromLabel}`,
+        text: `Select target value for ${row.sector} / ${row.station} / ${row.type}.`,
+        input: "select",
+        inputOptions: Object.fromEntries(
+          targetOptions.map((option) => [option.value, option.label]),
+        ),
+        inputPlaceholder: "Select target",
+        showCancelButton: true,
+        confirmButtonText: "Next",
+        inputValidator: (value) =>
+          !value ? "Please select target value." : undefined,
+      });
+
+      if (!targetResult.isConfirmed || !targetResult.value) return;
+
+      const targetValue = String(targetResult.value);
+      const targetLabel = labelMap[targetValue as keyof typeof labelMap];
+
+      const { data: candidates, error: fetchError } = await supabase
+        .from("cstation_inventory")
+        .select("id, serial_no, make, status, source")
+        .eq("sector", row.sector)
+        .eq("station", row.station)
+        .eq("type", row.type)
+        .eq(field, fromValue)
+        .order("serial_no", { ascending: true });
+
+      if (fetchError) {
+        await Swal.fire("Failed", fetchError.message, "error");
+        return;
+      }
+
+      if (!candidates || candidates.length === 0) {
+        await Swal.fire(
+          "No row found",
+          `No ${fromLabel} row is available to update.`,
+          "info",
+        );
+        return;
+      }
+
+      const inputOptions = Object.fromEntries(
+        candidates.map((candidate: any, index: number) => [
+          candidate.id,
+          `${index + 1}. SN: ${candidate.serial_no || "N/A"} | Make: ${candidate.make || "N/A"}`,
+        ]),
+      );
+
+      const result = await Swal.fire({
+        title: `Select ${fromLabel} row`,
+        text: `Pick one row under ${row.sector} / ${row.station} / ${row.type} to change to ${targetLabel}.`,
+        input: "select",
+        inputOptions,
+        inputPlaceholder: "Select a row",
+        showCancelButton: true,
+        confirmButtonText: `Change to ${targetLabel}`,
+        inputValidator: (value) =>
+          !value ? "Please select a row." : undefined,
+      });
+
+      if (!result.isConfirmed || !result.value) {
+        return;
+      }
+
+      const selectedId = String(result.value);
+      const { error: updateError } = await supabase
+        .from("cstation_inventory")
+        .update({ [field]: targetValue })
+        .eq("id", selectedId);
+
+      if (updateError) {
+        await Swal.fire("Update failed", updateError.message, "error");
+        return;
+      }
+
+      await refresh();
+      await Swal.fire("Updated", `Selected row is now ${targetLabel}.`, "success");
+    } finally {
+      setUpdatingKey(null);
+    }
+  };
+
+  const openEditFlow = async (row: QuicklookRow) => {
+    const equipment = row.equipments.all;
+
+    type BucketOption = {
+      key: string;
+      label: string;
+      field: EditableField;
+      from: StatusBucket | SourceBucket;
+      count: number;
+    };
+
+    const allBucketOptions: BucketOption[] = [
+      {
+        key: "status:svc",
+        label: "Status SVC",
+        field: "status",
+        from: "svc",
+        count: equipment.svc,
+      },
+      {
+        key: "status:uns",
+        label: "Status UNSVC",
+        field: "status",
+        from: "uns",
+        count: equipment.unsvc,
+      },
+      {
+        key: "status:ber",
+        label: "Status BER",
+        field: "status",
+        from: "ber",
+        count: equipment.ber,
+      },
+      {
+        key: "source:organic",
+        label: "Source ORGANIC",
+        field: "source",
+        from: "organic",
+        count: equipment.organic,
+      },
+      {
+        key: "source:donated",
+        label: "Source DONATED",
+        field: "source",
+        from: "donated",
+        count: equipment.donated,
+      },
+      {
+        key: "source:loaned",
+        label: "Source LOANED",
+        field: "source",
+        from: "loaned",
+        count: equipment.loaned,
+      },
+    ];
+
+    const bucketOptions = allBucketOptions.filter((option) => option.count > 0);
+
+    if (bucketOptions.length === 0) {
+      await Swal.fire("No editable bucket", "No rows available to modify.", "info");
+      return;
+    }
+
+    const pickBucket = await Swal.fire({
+      title: "Edit row bucket",
+      text: "Choose which count bucket to edit.",
+      input: "select",
+      inputOptions: Object.fromEntries(
+        bucketOptions.map((option) => [option.key, `${option.label} (${option.count})`]),
+      ),
+      inputPlaceholder: "Select bucket",
+      showCancelButton: true,
+      confirmButtonText: "Next",
+      inputValidator: (value) => (!value ? "Please select bucket." : undefined),
+    });
+
+    if (!pickBucket.isConfirmed || !pickBucket.value) return;
+
+    const selected = bucketOptions.find((option) => option.key === pickBucket.value);
+    if (!selected) return;
+
+    await updateFromBucket(row, selected.field, selected.from);
+  };
 
   const highlightText = (text: string, query: string) => {
     if (!query) return text;
@@ -152,6 +387,9 @@ export default function QuicklookInventory() {
                   <th colSpan={4} className="px-4 py-2 text-center">
                     SOURCE
                   </th>
+                  <th rowSpan={2} className="px-3 py-2 text-center">
+                    Actions
+                  </th>
                 </tr>
                 <tr className="border-t bg-white text-xs text-slate-500">
                   <th className="px-3 py-2 text-center">SVC</th>
@@ -162,9 +400,6 @@ export default function QuicklookInventory() {
                   <th className="px-3 py-2 text-center">DONATED</th>
                   <th className="px-3 py-2 text-center">LOANED</th>
                   <th className="px-3 py-2 text-center">TOTAL</th>
-                  <th className="px-3 py-2 text-center">ASDA</th>
-                  <th className="px-3 py-2 text-center">ASD</th>
-                  <th className="px-3 py-2 text-center">TOTAL</th>
                 </tr>
               </thead>
               <tbody>
@@ -174,7 +409,6 @@ export default function QuicklookInventory() {
                     equipment.svc + equipment.unsvc + equipment.ber;
                   const sourceTotal =
                     equipment.organic + equipment.donated + equipment.loaned;
-                  const makeTotal = equipment.asda + equipment.asd;
 
                   return (
                     <tr
@@ -218,15 +452,14 @@ export default function QuicklookInventory() {
                       <td className="bg-slate-50 px-3 py-2 text-center font-semibold">
                         {sourceTotal}
                       </td>
-
                       <td className="px-3 py-2 text-center">
-                        <InlineCell value={equipment.asda} />
-                      </td>
-                      <td className="px-3 py-2 text-center">
-                        <InlineCell value={equipment.asd} />
-                      </td>
-                      <td className="bg-slate-50 px-3 py-2 text-center font-semibold">
-                        {makeTotal}
+                        <button
+                          type="button"
+                          onClick={() => void openEditFlow(row)}
+                          className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          Edit
+                        </button>
                       </td>
                     </tr>
                   );

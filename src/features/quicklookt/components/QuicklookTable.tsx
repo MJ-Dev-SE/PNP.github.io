@@ -5,18 +5,8 @@ import React, {
   type ReactNode,
   type SetStateAction,
 } from "react";
-import {
-  DISPOSITION_OPTIONS,
-  ISSUANCE_OPTIONS,
-  STATUS_OPTIONS,
-} from "../constants";
 import type { InventoryItem } from "../model";
 import { bulkDeleteInventoryAction } from "../actions";
-
-type EditingCell = {
-  id: string;
-  field: keyof InventoryItem;
-} | null;
 
 type QuicklookTableProps = {
   equipmentTitle: string;
@@ -25,16 +15,6 @@ type QuicklookTableProps = {
   paginatedRows: InventoryItem[];
   search: string;
   highlightText: (text: string, query: string) => ReactNode;
-  editingCell: EditingCell;
-  inlineValue: string;
-  setInlineValue: (value: string) => void;
-  handleInlineBlur: (item: InventoryItem, field: keyof InventoryItem) => void;
-  saveInlineEdit: (
-    item: InventoryItem,
-    field: keyof InventoryItem,
-    value: string,
-  ) => void | Promise<void>;
-  cancelInlineEdit: () => void;
   handleValidationClick: (item: InventoryItem) => void;
   onEdit: (item: InventoryItem) => void;
   onDelete: (item: InventoryItem) => void | Promise<void>;
@@ -58,12 +38,6 @@ export function QuicklookTable({
   paginatedRows,
   search,
   highlightText,
-  editingCell,
-  inlineValue,
-  setInlineValue,
-  handleInlineBlur,
-  saveInlineEdit,
-  cancelInlineEdit,
   handleValidationClick,
   onEdit,
 
@@ -197,77 +171,21 @@ export function QuicklookTable({
                 </td>
 
                 <td className="px-3 py-2 text-center">
-                  {editingCell?.id === r.id &&
-                  editingCell.field === "status" ? (
-                    <select
-                      autoFocus
-                      className="rounded border px-2 py-1 text-xs"
-                      value={inlineValue}
-                      onChange={(e) => setInlineValue(e.target.value)}
-                      onBlur={() => handleInlineBlur(r, "status")}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          void saveInlineEdit(r, "status", inlineValue);
-                        }
-
-                        if (e.key === "Escape") {
-                          cancelInlineEdit();
-                        }
-                      }}
-                    >
-                      {STATUS_OPTIONS.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                        r.status === "SERVICEABLE"
-                          ? "bg-green-100 text-green-700"
-                          : r.status === "UNSERVICEABLE"
-                            ? "bg-red-100 text-red-700"
-                            : "bg-yellow-100 text-yellow-700"
-                      }`}
-                    >
-                      {r.status}
-                    </span>
-                  )}
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                      r.status === "SERVICEABLE"
+                        ? "bg-green-100 text-green-700"
+                        : r.status === "UNSERVICEABLE"
+                          ? "bg-red-100 text-red-700"
+                          : "bg-yellow-100 text-yellow-700"
+                    }`}
+                  >
+                    {r.status}
+                  </span>
                 </td>
 
                 <td className="px-3 py-2 text-center">
-                  {editingCell?.id === r.id &&
-                  editingCell.field === "disposition" ? (
-                    <select
-                      autoFocus
-                      className="rounded border px-2 py-1 text-xs"
-                      value={inlineValue}
-                      onChange={(e) => setInlineValue(e.target.value)}
-                      onBlur={() => handleInlineBlur(r, "disposition")}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          void saveInlineEdit(r, "disposition", inlineValue);
-                        }
-
-                        if (e.key === "Escape") {
-                          cancelInlineEdit();
-                        }
-                      }}
-                    >
-                      {DISPOSITION_OPTIONS.map((d) => (
-                        <option key={d} value={d}>
-                          {d}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <span title="Auto-updated based on status">
-                      {r.disposition}
-                    </span>
-                  )}
+                  <span title="Updated via Edit button">{r.disposition}</span>
                 </td>
                 <td className="px-3 py-2 text-center uppercase">
                   {highlightText(r.source, search)}
@@ -276,34 +194,7 @@ export function QuicklookTable({
                   {highlightText(r.user_office, search)}
                 </td>
                 <td className="px-3 py-2 text-center">
-                  {editingCell?.id === r.id &&
-                  editingCell.field === "issuanceType" ? (
-                    <select
-                      autoFocus
-                      className="rounded border px-2 py-1 text-xs"
-                      value={inlineValue}
-                      onChange={(e) => setInlineValue(e.target.value)}
-                      onBlur={() => handleInlineBlur(r, "issuanceType")}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          void saveInlineEdit(r, "issuanceType", inlineValue);
-                        }
-
-                        if (e.key === "Escape") {
-                          cancelInlineEdit();
-                        }
-                      }}
-                    >
-                      {ISSUANCE_OPTIONS.map((i) => (
-                        <option key={i} value={i}>
-                          {i}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <span>{r.issuanceType}</span>
-                  )}
+                  <span>{r.issuanceType}</span>
                 </td>
                 <td className="px-3 py-2 text-center">
                   <button

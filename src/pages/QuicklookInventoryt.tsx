@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef, useState } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import PpoGridLoader from "../components/PpoGridLoader";
@@ -16,7 +16,6 @@ import { useQuicklooktData } from "../features/quicklookt/hooks";
 import {
   applySmartDefaultsForEdit,
   deleteInventoryItemAction,
-  saveInlineEditAction,
   saveEditInventoryItemAction,
   submitDepartmentLoginAction,
   toggleValidationAction,
@@ -53,16 +52,7 @@ export default function QuicklookInventory() {
   const [isCheckingAccess, setIsCheckingAccess] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [editingCell, setEditingCell] = useState<{
-    id: string;
-    field: keyof InventoryItem;
-  } | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-
-  const [inlineValue, setInlineValue] = useState<string>("");
-
-  const isSavingInlineRef = useRef(false);
-  const originalInlineValueRef = useRef<string>("");
 
   const exportToExcel = () => {
     const table = document.querySelector("table");
@@ -343,10 +333,6 @@ export default function QuicklookInventory() {
   }, [items, ppo, station, selectedType, selectedChild, search]);
 
   const totalPages = Math.ceil(rows.length / ITEMS_PER_PAGE);
-  const cancelInlineEdit = () => {
-    setEditingCell(null);
-    setInlineValue("");
-  };
 
   const paginatedRows = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -420,38 +406,6 @@ export default function QuicklookInventory() {
       }))
       .sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [rows]);
-
-  const saveInlineEdit = async (
-    item: InventoryItem,
-    field: keyof InventoryItem,
-    value: string,
-  ) => {
-    await saveInlineEditAction({
-      item,
-      field,
-      value,
-      isSavingInlineRef,
-      setItems,
-      setEditingCell,
-    });
-  };
-
-  const handleInlineBlur = (
-    item: InventoryItem,
-    field: keyof InventoryItem,
-  ) => {
-    if (isSavingInlineRef.current) return;
-
-    const original = originalInlineValueRef.current;
-    const current = inlineValue;
-
-    if (current === original) {
-      cancelInlineEdit();
-      return;
-    }
-
-    void saveInlineEdit(item, field, current);
-  };
 
   const toggleValidation = async (item: InventoryItem) => {
     return toggleValidationAction({
@@ -546,12 +500,6 @@ export default function QuicklookInventory() {
           paginatedRows={paginatedRows}
           search={search}
           highlightText={highlightText}
-          editingCell={editingCell}
-          inlineValue={inlineValue}
-          setInlineValue={setInlineValue}
-          handleInlineBlur={handleInlineBlur}
-          saveInlineEdit={saveInlineEdit}
-          cancelInlineEdit={cancelInlineEdit}
           handleValidationClick={handleValidationClick}
           onEdit={(item) => {
             setEditItem(item);
