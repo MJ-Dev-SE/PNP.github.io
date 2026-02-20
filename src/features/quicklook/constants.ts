@@ -9,6 +9,8 @@ export const EMPTY_STATS: EquipmentStats = {
   donated: 0,
   loaned: 0,
   fas: 0,
+  asd: 0,
+  asda: 0,
 };
 
 export const PPO_LOGOS = [

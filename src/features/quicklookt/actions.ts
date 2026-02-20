@@ -303,3 +303,57 @@ export const saveEditInventoryItemAction = async ({
 
   setIsEditOpen(false);
 };
+
+type BulkDeleteParams = {
+  ids: string[];
+  setItems: Dispatch<SetStateAction<InventoryItem[]>>;
+};
+
+export const bulkDeleteInventoryAction = async ({
+  ids,
+  setItems,
+}: BulkDeleteParams) => {
+  if (ids.length === 0) {
+    Swal.fire("No selection", "Select records first.", "info");
+    return false;
+  }
+
+  const result = await Swal.fire({
+    title: `Delete ${ids.length} records?`,
+    text: "This cannot be undone.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    confirmButtonText: "Yes, delete",
+  });
+
+  if (!result.isConfirmed) return false;
+
+  const { error } = await supabase
+    .from("cstation_inventory")
+    .delete()
+    .in("id", ids);
+
+  if (error) {
+    Swal.fire("Error", "Bulk delete failed", "error");
+    return false;
+  }
+
+  setItems(prev => prev.filter(i => !ids.includes(i.id)));
+
+  await Swal.fire({
+    icon: "success",
+    title: "Deleted!",
+    text: `${ids.length} record(s) have been removed successfully.`,
+    timer: 3000,
+    showConfirmButton: false,
+    background: "#f0fdf4",
+    iconColor: "#16a34a",
+    customClass: {
+      title: "text-green-700 font-bold",
+htmlContainer: "text-sm"
+    }
+  });
+
+  return true;
+};

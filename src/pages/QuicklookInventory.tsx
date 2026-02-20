@@ -162,6 +162,9 @@ export default function QuicklookInventory() {
                   <th className="px-3 py-2 text-center">DONATED</th>
                   <th className="px-3 py-2 text-center">LOANED</th>
                   <th className="px-3 py-2 text-center">TOTAL</th>
+                  <th className="px-3 py-2 text-center">ASDA</th>
+                  <th className="px-3 py-2 text-center">ASD</th>
+                  <th className="px-3 py-2 text-center">TOTAL</th>
                 </tr>
               </thead>
               <tbody>
@@ -170,19 +173,17 @@ export default function QuicklookInventory() {
                   const statusTotal =
                     equipment.svc + equipment.unsvc + equipment.ber;
                   const sourceTotal =
-                    equipment.organic +
-                    equipment.donated +
-                    equipment.loaned +
-                    equipment.fas;
+                    equipment.organic + equipment.donated + equipment.loaned;
+                  const makeTotal = equipment.asda + equipment.asd;
 
                   return (
                     <tr
-                      key={`${row.unit}-${row.station}-${row.type}`}
+                      key={`${row.sector}-${row.station}-${row.type}`}
                       className="border-t border-slate-100 transition-colors hover:bg-slate-50/40"
                     >
                       <td className="px-4 py-3 font-semibold text-slate-800">
                         <div className="leading-tight">
-                          {highlightText(row.unit, search)}
+                          {highlightText(row.sector, search)}
                         </div>
                         <div className="leading-tight text-slate-500">
                           {highlightText(row.station, search)}
@@ -213,8 +214,19 @@ export default function QuicklookInventory() {
                       <td className="px-3 py-2 text-center">
                         <InlineCell value={equipment.loaned} />
                       </td>
+
                       <td className="bg-slate-50 px-3 py-2 text-center font-semibold">
                         {sourceTotal}
+                      </td>
+
+                      <td className="px-3 py-2 text-center">
+                        <InlineCell value={equipment.asda} />
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <InlineCell value={equipment.asd} />
+                      </td>
+                      <td className="bg-slate-50 px-3 py-2 text-center font-semibold">
+                        {makeTotal}
                       </td>
                     </tr>
                   );

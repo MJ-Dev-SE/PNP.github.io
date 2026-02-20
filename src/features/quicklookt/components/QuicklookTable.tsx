@@ -1,11 +1,17 @@
 //table datas, and effects like the color in status
-import type { ReactNode } from "react";
+import React, {
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
 import {
   DISPOSITION_OPTIONS,
   ISSUANCE_OPTIONS,
   STATUS_OPTIONS,
 } from "../constants";
 import type { InventoryItem } from "../model";
+import { bulkDeleteInventoryAction } from "../actions";
 
 type EditingCell = {
   id: string;
@@ -38,6 +44,11 @@ type QuicklookTableProps = {
   currentPage: number;
   setCurrentPage: (value: number | ((prev: number) => number)) => void;
   rowsLength: number;
+  selectedIds: string[];
+  onToggleSelect: (id: string) => void;
+  onToggleSelectAll: () => void;
+  setSelectedIds: Dispatch<SetStateAction<string[]>>;
+  setItems: Dispatch<SetStateAction<InventoryItem[]>>;
 };
 
 export function QuicklookTable({
@@ -55,6 +66,7 @@ export function QuicklookTable({
   cancelInlineEdit,
   handleValidationClick,
   onEdit,
+
   onDelete,
   isFiltered,
   totalRows,
@@ -62,13 +74,42 @@ export function QuicklookTable({
   currentPage,
   setCurrentPage,
   rowsLength,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
+  setSelectedIds,
+  setItems,
 }: QuicklookTableProps) {
+  // Track deleted item IDs for animation
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+
+  const handleBulkDelete = async () => {
+    const idsToDelete = [...selectedIds];
+
+    // Add deleted items to the animation set
+    setDeletingIds(new Set(idsToDelete));
+
+    // Small delay to allow animation to start before actual deletion
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const isDeleted = await bulkDeleteInventoryAction({
+      ids: idsToDelete,
+      setItems,
+    });
+
+    if (isDeleted) {
+      setSelectedIds((prev) => prev.filter((id) => !idsToDelete.includes(id)));
+    }
+
+    setDeletingIds(new Set());
+  };
+
   return (
     <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200/70 bg-white/80 shadow-sm">
       <div className="border-b bg-gradient-to-r from-blue-700 to-blue-600 px-4 py-3 text-sm font-semibold text-white flex items-center justify-between backdrop-blur">
         <span>{equipmentTitle}</span>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <button
             onClick={exportToExcel}
             className="rounded-lg border border-white/30 px-4 py-1.5 text-sm font-semibold text-white hover:bg-white/10"
@@ -82,6 +123,14 @@ export function QuicklookTable({
           >
             View Summary
           </button>
+
+          <button
+            disabled={selectedIds.length === 0}
+            onClick={handleBulkDelete}
+            className="rounded-lg bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Delete Selected ({selectedIds.length})
+          </button>
         </div>
       </div>
 
@@ -89,12 +138,18 @@ export function QuicklookTable({
         <table className="w-full border-collapse text-sm">
           <thead className="sticky top-0 z-10">
             <tr className="bg-slate-50 text-slate-600 uppercase text-xs tracking-wide">
+              <th className="px-3 py-2">
+                <input type="checkbox" onChange={onToggleSelectAll} />
+              </th>
+
               <th className="px-3 py-2">PPO / UNIT</th>
               <th className="px-3 py-2">Serial No.</th>
               <th className="px-3 py-2">Type</th>
               <th className="px-3 py-2">Make</th>
               <th className="px-3 py-2">Status</th>
               <th className="px-3 py-2">Disposition</th>
+              <th className="px-3 py-2">Source</th>
+              <th className="px-3 py-2">User Office</th>
               <th className="px-3 py-2">Issuance</th>
               <th className="px-3 py-2">Validated</th>
               <th className="px-3 py-2">Actions</th>
@@ -105,8 +160,21 @@ export function QuicklookTable({
             {paginatedRows.map((r) => (
               <tr
                 key={r.id}
-                className="border-t border-slate-100 hover:bg-blue-50/40 transition-colors"
+                className={`border-t border-slate-100 hover:bg-blue-50/40 transition-all duration-300 ${
+                  deletingIds.has(r.id) ? "opacity-0 scale-95 transform" : ""
+                }`}
+                style={{
+                  transitionProperty: "opacity, transform",
+                }}
               >
+                <td className="px-3 py-2 text-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(r.id)}
+                    onChange={() => onToggleSelect(r.id)}
+                  />
+                </td>
+
                 <td className="px-3 py-3 font-semibold text-slate-800">
                   <div className="leading-tight">
                     {highlightText(`${r.ppo}`, search)}
@@ -200,6 +268,12 @@ export function QuicklookTable({
                       {r.disposition}
                     </span>
                   )}
+                </td>
+                <td className="px-3 py-2 text-center uppercase">
+                  {highlightText(r.source, search)}
+                </td>
+                <td className="px-3 py-2 text-center uppercase">
+                  {highlightText(r.user_office, search)}
                 </td>
                 <td className="px-3 py-2 text-center">
                   {editingCell?.id === r.id &&

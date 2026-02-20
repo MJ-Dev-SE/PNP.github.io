@@ -6,7 +6,6 @@ import {
   loadStations,
   saveStations,
   getSession,
-  clearSession,
 } from "../../utils/storage";
 
 import { MiniStat } from "../../components/UI";
@@ -60,7 +59,9 @@ export default function SectorDashboard() {
   const [dept, setDept] = useState("");
   const [name, setName] = useState("");
   const [pin, setPin] = useState("");
-  const [isSignup, setIsSignup] = useState(false);
+  const [authMode, setAuthMode] = useState<"enter" | "signup" | "reset">(
+    "enter",
+  );
   const [confirmPin, setConfirmPin] = useState("");
   const sleep = (ms: number) =>
     new Promise((resolve) => setTimeout(resolve, ms));
@@ -72,19 +73,28 @@ export default function SectorDashboard() {
     station?: string;
   } | null>(null);
 
+  const resetAccessForm = () => {
+    setDept("");
+    setName("");
+    setPin("");
+    setConfirmPin("");
+    setAuthMode("enter");
+  };
+
   const handleAccess = async () => {
     if (!dept || !pin) {
       Swal.fire("Missing info", "Department and PIN required", "warning");
       return;
     }
 
+    const normalizedDept = dept.trim().toUpperCase();
     const pinHash = await hashPin(pin);
 
     const { data: rows, error: fetchError } = await supabase
       .from("inventory_access")
       .select("id, department, pin_hash")
-      .eq("department", dept)
-      .limit(1);
+      .ilike("department", normalizedDept)
+      .limit(100);
 
     if (fetchError) {
       console.error(fetchError);
@@ -92,10 +102,11 @@ export default function SectorDashboard() {
       return;
     }
 
-    const existing = rows?.[0] ?? null;
+    const matchedRows = rows ?? [];
+    const existing = matchedRows[0] ?? null;
 
     // 🆕 SIGNUP MODE
-    if (isSignup) {
+    if (authMode === "signup") {
       if (pin.length < MIN_PIN_LENGTH) {
         Swal.fire(
           "Weak PIN",
@@ -110,7 +121,7 @@ export default function SectorDashboard() {
         return;
       }
 
-      if (existing) {
+      if (matchedRows.length > 0) {
         Swal.fire(
           "Department exists",
           "This department already has a PIN. Please use Enter.",
@@ -122,7 +133,7 @@ export default function SectorDashboard() {
       const { error: insertError } = await supabase
         .from("inventory_access")
         .insert({
-          department: dept,
+          department: normalizedDept,
           name,
           pin_hash: pinHash,
         });
@@ -144,7 +155,7 @@ export default function SectorDashboard() {
         "success",
       );
 
-      setIsSignup(false);
+      setAuthMode("enter");
       setPin("");
       setConfirmPin("");
       setName("");
@@ -153,7 +164,87 @@ export default function SectorDashboard() {
     }
 
     // 🔐 ENTER MODE
-    if (!existing || existing.pin_hash !== pinHash) {
+    if (authMode === "reset") {
+      if (pin.length < MIN_PIN_LENGTH) {
+        Swal.fire(
+          "Weak PIN",
+          `PIN must be at least ${MIN_PIN_LENGTH} digits.`,
+          "warning",
+        );
+        return;
+      }
+
+      if (pin !== confirmPin) {
+        Swal.fire("PIN mismatch", "PIN and Confirm PIN do not match.", "error");
+        return;
+      }
+
+      if (!existing) {
+        Swal.fire(
+          "Department not found",
+          "No department access record exists for this department.",
+          "error",
+        );
+        return;
+      }
+
+      const { data: updatedRows, error: updateError } = await supabase
+        .from("inventory_access")
+        .update({ pin_hash: pinHash })
+        .ilike("department", normalizedDept)
+        .select("id");
+
+      if (updateError) {
+        console.error(updateError);
+        Swal.fire(
+          "Reset failed",
+          `Unable to reset PIN.\n${updateError.message}\n(code: ${updateError.code ?? "n/a"})`,
+          "error",
+        );
+        return;
+      }
+
+      if (!updatedRows || updatedRows.length === 0) {
+        const { data: verifyRows, error: verifyError } = await supabase
+          .from("inventory_access")
+          .select("id, department")
+          .ilike("department", normalizedDept)
+          .limit(5);
+
+        const verifyCount = verifyRows?.length ?? 0;
+        Swal.fire(
+          {
+            icon: "error",
+            title: "Reset failed",
+            html:
+              `<div style="text-align:left;font-size:12px">` +
+              `<div><b>Department input:</b> ${dept}</div>` +
+              `<div><b>Normalized:</b> ${normalizedDept}</div>` +
+              `<div><b>Matched before update:</b> ${matchedRows.length}</div>` +
+              `<div><b>Rows updated:</b> 0</div>` +
+              `<div><b>Matched in verify query:</b> ${verifyCount}</div>` +
+              `<div><b>Verify error:</b> ${verifyError?.message ?? "none"}</div>` +
+              `<div style="margin-top:8px">Likely cause: Supabase RLS update policy blocks this table.</div>` +
+              `</div>`,
+          },
+        );
+        return;
+      }
+
+      await Swal.fire(
+        "PIN reset successful",
+        "Your department PIN has been updated. Please enter to continue.",
+        "success",
+      );
+
+      setAuthMode("enter");
+      setPin("");
+      setConfirmPin("");
+      return;
+    }
+
+    const hasValidPin = matchedRows.some((row) => row.pin_hash === pinHash);
+    if (!hasValidPin) {
       Swal.fire("Invalid PIN", "Access denied", "error");
       return;
     }
@@ -161,14 +252,15 @@ export default function SectorDashboard() {
     // ✅ ENTER SUCCESS → SAVE SESSION & NAVIGATE
     localStorage.setItem(
       "inventory_session",
-      JSON.stringify({ department: dept, name, station: pendingStation }),
+      JSON.stringify({
+        department: normalizedDept,
+        name,
+        station: pendingStation,
+      }),
     );
 
     setShowAccess(false);
-    setDept("");
-    setName("");
-    setPin("");
-    setConfirmPin("");
+    resetAccessForm();
 
     nav(
       `/sector/${encodeURIComponent(sector)}/${encodeURIComponent(
@@ -542,19 +634,28 @@ export default function SectorDashboard() {
       {showAccess && (
         <div
           className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setShowAccess(false)}
+          onClick={() => {
+            setShowAccess(false);
+            resetAccessForm();
+          }}
         >
           <div
             className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-slate-200/50"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="font-semibold text-slate-900 mb-1 text-lg">
-              {isSignup ? "Create Department Access" : "Enter Station"}
+              {authMode === "signup"
+                ? "Create Department Access"
+                : authMode === "reset"
+                  ? "Reset Department PIN"
+                  : "Enter Station"}
             </h3>
             <p className="text-sm text-slate-600 mb-5">
-              {isSignup
+              {authMode === "signup"
                 ? "Create a new department account to access this station"
-                : "Enter your department PIN to access this station"}
+                : authMode === "reset"
+                  ? "Set a new PIN for your department account"
+                  : "Enter your department PIN to access this station"}
             </p>
 
             <input
@@ -564,7 +665,7 @@ export default function SectorDashboard() {
               className="text-input w-full mb-3 px-4 py-2.5 rounded-xl"
             />
 
-            {isSignup && (
+            {authMode === "signup" && (
               <input
                 placeholder="Name (optional)"
                 value={name}
@@ -575,30 +676,55 @@ export default function SectorDashboard() {
 
             <input
               type="password"
-              placeholder="PIN"
+              placeholder={authMode === "reset" ? "New PIN" : "PIN"}
               value={pin}
               onChange={(e) => setPin(e.target.value)}
               className="text-input w-full mb-3 px-4 py-2.5 rounded-xl"
             />
-            {isSignup && (
+            {(authMode === "signup" || authMode === "reset") && (
               <input
                 type="password"
-                placeholder="Confirm PIN"
+                placeholder={
+                  authMode === "reset" ? "Confirm New PIN" : "Confirm PIN"
+                }
                 value={confirmPin}
                 onChange={(e) => setConfirmPin(e.target.value)}
                 className="text-input w-full mb-5 px-4 py-2.5 rounded-xl"
               />
             )}
             <div className="flex justify-between items-center gap-3 pt-3 border-t border-slate-200">
-              <button
-                onClick={() => setIsSignup((v) => !v)}
-                className="text-xs text-blue-600 hover:text-blue-700 font-semibold transition"
-              >
-                {isSignup ? "← Back to Enter" : "Create Account →"}
-              </button>
+              <div className="flex gap-3">
+                {authMode !== "enter" && (
+                  <button
+                    onClick={() => setAuthMode("enter")}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-semibold transition"
+                  >
+                    ← Back to Enter
+                  </button>
+                )}
+                {authMode !== "signup" && (
+                  <button
+                    onClick={() => setAuthMode("signup")}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-semibold transition"
+                  >
+                    Create Account →
+                  </button>
+                )}
+                {authMode !== "reset" && (
+                  <button
+                    onClick={() => setAuthMode("reset")}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-semibold transition"
+                  >
+                    Forgot PIN?
+                  </button>
+                )}
+              </div>
               <div className="flex justify-end gap-2">
                 <button
-                  onClick={() => setShowAccess(false)}
+                  onClick={() => {
+                    setShowAccess(false);
+                    resetAccessForm();
+                  }}
                   className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 transition font-medium text-sm text-slate-700"
                 >
                   Cancel
@@ -607,7 +733,11 @@ export default function SectorDashboard() {
                   onClick={handleAccess}
                   className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition font-medium text-sm"
                 >
-                  {isSignup ? "Create Account" : "Enter"}
+                  {authMode === "signup"
+                    ? "Create Account"
+                    : authMode === "reset"
+                      ? "Reset PIN"
+                      : "Enter"}
                 </button>
               </div>
             </div>

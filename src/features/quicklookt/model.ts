@@ -34,6 +34,8 @@ export type InventoryItem = {
   issuanceType: string;
   validated: boolean;
   validatedAt?: string | null;
+  source: string;
+  user_office: string;
 };
 
 type CStationInventoryRow = {
@@ -46,6 +48,8 @@ type CStationInventoryRow = {
   serial_no?: string | null;
   serialNo?: string | null;
   serialno?: string | null;
+  source?: string | null;
+  user_office?: string | null;
   status: string | null;
   disposition: string | null;
   issuance: string | null;
@@ -159,5 +163,7 @@ export const mapCstationRowToItem = (row: CStationInventoryRow): InventoryItem =
     issuanceType: ISSUANCE_DB_TO_UI[row.issuance ?? "assigned"] ?? "ASSIGNED",
     validated: Boolean(row.validated ?? false),
     validatedAt: row.validated_at ?? row.validatedAt ?? null,
+    source: row.source ?? "",
+    user_office: row.user_office ?? "",
   };
 };

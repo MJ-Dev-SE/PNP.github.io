@@ -72,31 +72,6 @@ export const useQuicklooktData = () => {
   }, []);
 
   useEffect(() => {
-    const checkAccess = async () => {
-      const {
-        data: { user: authUser },
-      } = await supabase.auth.getUser();
-
-      if (!authUser) return;
-
-      const { data, error } = await supabase
-        .from("inventory_access")
-        .select("department")
-        .eq("user_id", authUser.id)
-        .single();
-
-      if (error) {
-        console.error("Access check failed", error);
-        return;
-      }
-
-      setCanValidate(data.department === "ADMIN");
-    };
-
-    checkAccess();
-  }, []);
-
-  useEffect(() => {
     const loadUser = async () => {
       const {
         data: { user: authUser },

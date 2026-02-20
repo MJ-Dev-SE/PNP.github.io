@@ -14,7 +14,7 @@ export const useQuicklookData = () => {
       try {
         const { data, error } = await supabase
           .from("cstation_inventory")
-          .select("sector, station, type, status, source")
+          .select("sector, station, type, status, source, make")
           .order("sector")
           .order("station")
           .order("type");

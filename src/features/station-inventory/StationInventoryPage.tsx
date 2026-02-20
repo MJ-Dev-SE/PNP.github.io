@@ -1345,8 +1345,10 @@ export default function StationInventory() {
         </section>
 
         {/* TABLE PANEL */}
-        <section className="rounded-2xl border border-slate-200/70 bg-white/80 shadow-sm overflow-hidden">
+
+        <section className="panel overflow-x-auto">
           {/* HEADER — full width, respects rounded corners */}
+
           <div className="rounded-t-2xl border-b bg-gradient-to-r from-slate-900 to-slate-800 px-4 py-3 text-sm font-semibold text-white">
             STATUS OF FIREARMS
           </div>
@@ -1607,18 +1609,17 @@ export default function StationInventory() {
                       </tr>
                     );
                   })}
-                  {initialLoading && (
-                    <tr>
-                      <td colSpan={20}>
-                        <div className="fixed inset-0 z-40 flex items-center justify-center bg-white/60 backdrop-blur">
-                          <PpoGridLoader logos={PPO_LOGOS} />
-                        </div>
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
-
+              {initialLoading && (
+                <tr>
+                  <td colSpan={17}>
+                    <div className="fixed inset-0 z-40 flex items-center justify-center bg-white/60 backdrop-blur">
+                      <PpoGridLoader logos={PPO_LOGOS} />
+                    </div>
+                  </td>
+                </tr>
+              )}
               {!tableCleared && totalPages > 1 && (
                 <div className="mt-6 flex justify-center text-sm">
                   <div className="flex items-center gap-3 text-slate-700">

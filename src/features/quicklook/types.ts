@@ -7,15 +7,17 @@ export type EquipmentStats = {
   donated: number;
   loaned: number;
   fas: number;
+  asd: number;
+  asda: number;
 };
 
 export type QuicklookRow = {
-  unit: string;
   station: string;
   type: string;
   equipments: {
     all: EquipmentStats;
   };
+  sector: string;
 };
 
 export type CStationInventoryRow = {
@@ -24,4 +26,5 @@ export type CStationInventoryRow = {
   type: string | null;
   status: string | null;
   source: string | null;
+  make: string | null;
 };

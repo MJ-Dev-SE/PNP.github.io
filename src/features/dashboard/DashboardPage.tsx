@@ -13,7 +13,6 @@ import {
   categorizeCards,
   filterVisibleCards,
   getDashboardCards,
-  isCategory,
   isSortOption,
 } from "./selectors";
 import type { Category, SortOption } from "./types";
@@ -361,25 +360,13 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <SearchInput
                   value={q}
                   onChange={setQ}
                   placeholder="Search sector (e.g., RHQ, Cavite, Laguna...)"
                 />
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <SelectControl
-                    ariaLabel="Category filter"
-                    value={cat}
-                    onChange={(value) => {
-                      if (isCategory(value)) setCat(value);
-                    }}
-                  >
-                    <option value="All">All Categories</option>
-                    <option value="Ammunition">Ammunition</option>
-                    <option value="Firearms">Firearms</option>
-                    <option value="Accessories">Accessories</option>
-                  </SelectControl>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-0">
                   <SelectControl
                     ariaLabel="Sort filter"
                     value={sort}
@@ -455,20 +442,11 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center rounded-full border border-slate-600 bg-slate-800 px-2.5 py-1 text-[12px] font-semibold text-slate-200">
-                    {card.category}
-                  </span>
-                  <span className="inline-flex items-center rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-[12px] font-semibold text-slate-300">
-                    Local data
-                  </span>
-                </div>
-
                 <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-                  <div className="rounded-2xl bg-slate-800 p-3 ring-1 ring-slate-700 transition group-hover:ring-slate-500">
+                  <div>
                     <MiniStat label="SKUs" value={card.skus} />
                   </div>
-                  <div className="rounded-2xl bg-slate-800 p-3 ring-1 ring-slate-700 transition group-hover:ring-slate-500">
+                  <div>
                     <MiniStat label="Units" value={card.units} />
                   </div>
                 </div>

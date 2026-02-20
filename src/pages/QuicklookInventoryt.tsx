@@ -57,8 +57,10 @@ export default function QuicklookInventory() {
     id: string;
     field: keyof InventoryItem;
   } | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const [inlineValue, setInlineValue] = useState<string>("");
+
   const isSavingInlineRef = useRef(false);
   const originalInlineValueRef = useRef<string>("");
 
@@ -145,11 +147,34 @@ export default function QuicklookInventory() {
     setCurrentPage(1);
   }, [ppo, station, selectedType, selectedChild, search]);
 
+  useEffect(() => {
+    const currentIds = new Set(items.map((item) => item.id));
+    setSelectedIds((prev) => prev.filter((id) => currentIds.has(id)));
+  }, [items]);
+
   const isFiltered =
     ppo !== "All PPOs" ||
     station !== "All Stations" ||
     selectedType !== "All" ||
     selectedChild !== "All";
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
+    );
+  };
+
+  const toggleSelectAll = (rows: InventoryItem[]) => {
+    const pageIds = rows.map((r) => r.id);
+
+    const allSelected = pageIds.every((id) => selectedIds.includes(id));
+
+    if (allSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)));
+    } else {
+      setSelectedIds((prev) => [...new Set([...prev, ...pageIds])]);
+    }
+  };
 
   const ppos = useMemo(() => {
     const unique = new Set(items.map((i) => i.ppo));
@@ -330,13 +355,6 @@ export default function QuicklookInventory() {
   }, [rows, currentPage]);
 
   const columnTotals = useMemo(() => {
-    const countBy = (key: keyof InventoryItem) =>
-      rows.reduce<Record<string, number>>((acc, r) => {
-        const v = String(r[key] ?? "—");
-        acc[v] = (acc[v] || 0) + 1;
-        return acc;
-      }, {});
-
     const validatedYes = rows.filter((r) => r.validated).length;
     const validatedNo = rows.length - validatedYes;
     const validationRate =
@@ -361,8 +379,6 @@ export default function QuicklookInventory() {
 
     return {
       totalRows: rows.length,
-      status: countBy("status"),
-      issuance: countBy("issuanceType"),
       validated: {
         yes: validatedYes,
         no: validatedNo,
@@ -554,6 +570,11 @@ export default function QuicklookInventory() {
           currentPage={currentPage}
           setCurrentPage={setCurrentPage}
           rowsLength={rows.length}
+          onToggleSelect={toggleSelect}
+          selectedIds={selectedIds}
+          onToggleSelectAll={() => toggleSelectAll(paginatedRows)}
+          setSelectedIds={setSelectedIds}
+          setItems={setItems}
         />
 
         <EditInventoryModal

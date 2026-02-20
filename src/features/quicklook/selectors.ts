@@ -3,7 +3,7 @@ import { ALL_PPOS, ALL_TYPES } from "./constants";
 import type { QuicklookRow } from "./types";
 
 export const getPpoOptions = (rows: QuicklookRow[]) => {
-  const unique = new Set(rows.map((row) => row.unit));
+  const unique = new Set(rows.map((row) => row.sector));
   return [ALL_PPOS, ...Array.from(unique)];
 };
 
@@ -21,11 +21,11 @@ export const filterRows = (
   const query = search.trim().toLowerCase();
 
   return rows.filter((row) => {
-    if (ppo !== ALL_PPOS && row.unit !== ppo) return false;
+    if (ppo !== ALL_PPOS && row.sector !== ppo) return false;
     if (type !== ALL_TYPES && row.type !== type) return false;
     if (!query) return true;
 
-    const haystack = `${row.unit} ${row.station} ${row.type}`.toLowerCase();
+    const haystack = `${row.sector} ${row.station} ${row.type}`.toLowerCase();
     return haystack.includes(query);
   });
 };

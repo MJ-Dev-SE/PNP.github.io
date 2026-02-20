@@ -6,14 +6,14 @@ export const toGroupedRows = (records: CStationInventoryRow[]): QuicklookRow[] =
   const grouped: Record<string, QuicklookRow> = {};
 
   records.forEach((record) => {
-    const unit = record.sector ?? "UNKNOWN";
+    const sector = record.sector ?? "UNKNOWN";
     const station = record.station ?? "UNKNOWN";
     const type = record.type ?? "UNKNOWN";
-    const key = `${unit}::${station}::${type}`;
+    const key = `${sector}::${station}::${type}`;
 
     if (!grouped[key]) {
       grouped[key] = {
-        unit,
+        sector,
         station,
         type,
         equipments: { all: { ...EMPTY_STATS } },
@@ -43,7 +43,15 @@ export const toGroupedRows = (records: CStationInventoryRow[]): QuicklookRow[] =
     } else if (source === "fas") {
       grouped[key].equipments.all.fas += 1;
     }
-  });
+  
+
+      const make = (record.make ?? "asda").toLowerCase();
+    if (make === "asda") {
+      grouped[key].equipments.all.asda += 1;
+    } else if (make === "asd") {
+      grouped[key].equipments.all.asd += 1;
+
+  } });
 
   return Object.values(grouped);
 };
