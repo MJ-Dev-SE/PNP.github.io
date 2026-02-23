@@ -212,22 +212,20 @@ export default function SectorDashboard() {
           .limit(5);
 
         const verifyCount = verifyRows?.length ?? 0;
-        Swal.fire(
-          {
-            icon: "error",
-            title: "Reset failed",
-            html:
-              `<div style="text-align:left;font-size:12px">` +
-              `<div><b>Department input:</b> ${dept}</div>` +
-              `<div><b>Normalized:</b> ${normalizedDept}</div>` +
-              `<div><b>Matched before update:</b> ${matchedRows.length}</div>` +
-              `<div><b>Rows updated:</b> 0</div>` +
-              `<div><b>Matched in verify query:</b> ${verifyCount}</div>` +
-              `<div><b>Verify error:</b> ${verifyError?.message ?? "none"}</div>` +
-              `<div style="margin-top:8px">Likely cause: Supabase RLS update policy blocks this table.</div>` +
-              `</div>`,
-          },
-        );
+        Swal.fire({
+          icon: "error",
+          title: "Reset failed",
+          html:
+            `<div style="text-align:left;font-size:12px">` +
+            `<div><b>Department input:</b> ${dept}</div>` +
+            `<div><b>Normalized:</b> ${normalizedDept}</div>` +
+            `<div><b>Matched before update:</b> ${matchedRows.length}</div>` +
+            `<div><b>Rows updated:</b> 0</div>` +
+            `<div><b>Matched in verify query:</b> ${verifyCount}</div>` +
+            `<div><b>Verify error:</b> ${verifyError?.message ?? "none"}</div>` +
+            `<div style="margin-top:8px">Likely cause: Supabase RLS update policy blocks this table.</div>` +
+            `</div>`,
+        });
         return;
       }
 
@@ -492,7 +490,7 @@ export default function SectorDashboard() {
         {/* Station Cards */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {stationCards.map((card) => (
-            <button
+            <div
               key={card.name}
               onClick={() => {
                 const existingSession = getSession();
@@ -581,7 +579,7 @@ export default function SectorDashboard() {
                   </svg>
                 </div>
               </div>
-            </button>
+            </div>
           ))}
 
           {stationCards.length === 0 && (

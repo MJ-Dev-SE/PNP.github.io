@@ -850,19 +850,20 @@ export default function StationInventory() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-cyan-700 via-sky-400 to-blue-300 text-slate-900 overflow-x-hidden">
       <header className="sticky top-0 z-10 bg-white/70 backdrop-blur border-b">
-        <div className="mx-auto w-full max-w-[95rem] px-4 py-4 xl:px-8 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+        <div className="mx-auto w-full max-w-[95rem] px-4 py-4 xl:px-8 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={() => nav(`/sector/${encodeURIComponent(sector)}`)}
-              className="soft-btn px-3 py-2"
+              className="soft-btn px-3 py-2 shrink-0"
             >
               ← {sector} Stations
             </button>
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight truncate">
               {sector} • {station} — Inventory
             </h1>
           </div>
-          <div className="flex gap-2 items-center">
+          <div className="-mx-1 overflow-x-auto px-1 pb-1 md:mx-0 md:overflow-visible md:px-0 md:pb-0">
+            <div className="flex min-w-max gap-2 items-center">
             {session && (
               <span className="text-xs text-slate-700 bg-slate-100 px-2 py-1 rounded">
                 {session.name || session.department}
@@ -954,6 +955,7 @@ export default function StationInventory() {
                 }
               }}
             />
+            </div>
           </div>
         </div>
       </header>
@@ -1612,13 +1614,17 @@ export default function StationInventory() {
                 </tbody>
               </table>
               {initialLoading && (
-                <tr>
-                  <td colSpan={17}>
-                    <div className="fixed inset-0 z-40 flex items-center justify-center bg-white/60 backdrop-blur">
-                      <PpoGridLoader logos={PPO_LOGOS} />
-                    </div>
-                  </td>
-                </tr>
+                <table>
+                  <tbody>
+                    <tr>
+                      <td colSpan={17}>
+                        <div className="fixed inset-0 z-40 flex items-center justify-center bg-white/60 backdrop-blur">
+                          <PpoGridLoader logos={PPO_LOGOS} />
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               )}
               {!tableCleared && totalPages > 1 && (
                 <div className="mt-6 flex justify-center text-sm">
